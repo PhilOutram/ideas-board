@@ -2,10 +2,12 @@ import { useEffect, useState } from 'react'
 import {
   addDoc,
   collection,
+  doc,
   onSnapshot,
   orderBy,
   query,
   serverTimestamp,
+  updateDoc,
   where,
   type Timestamp,
 } from 'firebase/firestore'
@@ -21,11 +23,14 @@ export type Page = {
   created: Timestamp | null
 }
 
+export type PagePatch = Partial<Pick<Page, 'title' | 'context' | 'memory' | 'order'>>
+
 type UsePagesResult = {
   pages: Page[]
   loading: boolean
   error: Error | null
   createPage: (title: string) => Promise<string>
+  updatePage: (id: string, patch: PagePatch) => Promise<void>
 }
 
 export function usePages(userId: string): UsePagesResult {
@@ -81,5 +86,9 @@ export function usePages(userId: string): UsePagesResult {
     return ref.id
   }
 
-  return { pages, loading, error, createPage }
+  async function updatePage(id: string, patch: PagePatch): Promise<void> {
+    await updateDoc(doc(db, 'pages', id), patch)
+  }
+
+  return { pages, loading, error, createPage, updatePage }
 }

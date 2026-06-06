@@ -11,7 +11,7 @@ type Props = {
 }
 
 export default function SignedInShell({ user }: Props) {
-  const { pages, loading, error, createPage } = usePages(user.uid)
+  const { pages, loading, error, createPage, updatePage } = usePages(user.uid)
   const [selectedId, setSelectedId] = useState<string | null>(null)
 
   // If nothing is selected (first load, or selected page was deleted),
@@ -59,7 +59,7 @@ export default function SignedInShell({ user }: Props) {
           ) : loading ? (
             <p className="muted">Loading pages...</p>
           ) : selectedPage ? (
-            <PageView page={selectedPage} />
+            <PageView page={selectedPage} updatePage={updatePage} />
           ) : (
             <EmptyState />
           )}

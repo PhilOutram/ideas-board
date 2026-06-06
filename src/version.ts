@@ -1,4 +1,4 @@
-export const VERSION = 'v0.04'
+export const VERSION = 'v0.05'
 
 export type ChangelogEntry = {
   version: string
@@ -9,6 +9,15 @@ export type ChangelogEntry = {
 // Newest first. Bump VERSION and add an entry here on every commit so
 // the deployed build always shows exactly what shipped.
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: 'v0.05',
+    date: '2026-06-06',
+    notes: [
+      'Page-level Inbox: type a quick idea, hit Enter, it lands with a timestamp and syncs in real time.',
+      'Each inbox item has a "..." action menu: send to Memory, send to Context, or delete.',
+      'Pages now show a small read-only summary of Memory and Context below the inbox so send-to-X is visible (full editors come with the boards in step 6).',
+    ],
+  },
   {
     version: 'v0.04',
     date: '2026-06-06',
