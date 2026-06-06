@@ -1,4 +1,4 @@
-export const VERSION = 'v0.01'
+export const VERSION = 'v0.02'
 
 export type ChangelogEntry = {
   version: string
@@ -9,6 +9,13 @@ export type ChangelogEntry = {
 // Newest first. Bump VERSION and add an entry here on every commit so
 // the deployed build always shows exactly what shipped.
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: 'v0.02',
+    date: '2026-06-06',
+    notes: [
+      'Fix Vercel deploy: tell Vercel the build output lives in dist/ (Vite default), not build/ (the old CRA path).',
+    ],
+  },
   {
     version: 'v0.01',
     date: '2026-06-06',
