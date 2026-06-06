@@ -1,4 +1,4 @@
-export const VERSION = 'v0.06'
+export const VERSION = 'v0.07'
 
 export type ChangelogEntry = {
   version: string
@@ -9,6 +9,13 @@ export type ChangelogEntry = {
 // Newest first. Bump VERSION and add an entry here on every commit so
 // the deployed build always shows exactly what shipped.
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: 'v0.07',
+    date: '2026-06-06',
+    notes: [
+      'Send-to-memory / send-to-context now prefixes the snippet with a stable absolute date (e.g. "6 Jun 2026") instead of the live relative time. Live relative time stays in the inbox only - it makes no sense once frozen into prose that will be read months later.',
+    ],
+  },
   {
     version: 'v0.06',
     date: '2026-06-06',

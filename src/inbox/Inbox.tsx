@@ -28,7 +28,7 @@ export default function Inbox({ page, updatePage }: Props) {
 
   async function sendTo(field: 'memory' | 'context', item: QuickIdea) {
     const existing = field === 'memory' ? page.memory : page.context
-    const stamp = item.created ? formatStamp(item.created.toDate()) : ''
+    const stamp = item.created ? formatArchiveDate(item.created.toDate()) : ''
     const prefix = stamp ? `[${stamp}] ` : ''
     const appended = existing ? `${existing}\n${prefix}${item.text}` : `${prefix}${item.text}`
     await updatePage(page.id, { [field]: appended })
@@ -145,6 +145,15 @@ function InboxItem({ item, onSendToMemory, onSendToContext, onDelete }: ItemProp
   )
 }
 
+// Stable absolute date for snippets frozen into prose (memory, context,
+// future markdown exports). Time of day is intentionally omitted: these
+// snippets are read days, weeks, or months later, so "14:32" is noise.
+function formatArchiveDate(date: Date): string {
+  return date.toLocaleDateString([], { day: 'numeric', month: 'short', year: 'numeric' })
+}
+
+// Live relative-time label for the inbox UI only. Don't use this for
+// anything that gets persisted into prose.
 function formatStamp(date: Date): string {
   const now = new Date()
   const diffMs = now.getTime() - date.getTime()
