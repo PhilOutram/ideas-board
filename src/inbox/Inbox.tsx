@@ -147,12 +147,27 @@ function InboxItem({ item, onSendToMemory, onSendToContext, onDelete }: ItemProp
 
 function formatStamp(date: Date): string {
   const now = new Date()
-  const sameDay =
-    date.getFullYear() === now.getFullYear() &&
-    date.getMonth() === now.getMonth() &&
-    date.getDate() === now.getDate()
-  if (sameDay) {
-    return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+  const diffMs = now.getTime() - date.getTime()
+  const diffMin = Math.floor(diffMs / 60_000)
+
+  if (diffMs < 0) return 'just now'
+  if (diffMin < 1) return 'just now'
+  if (diffMin < 60) return `${diffMin}m`
+
+  const time = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+
+  const startOfDay = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime()
+  const dayDiff = Math.round((startOfDay(now) - startOfDay(date)) / 86_400_000)
+
+  if (dayDiff === 0) return time
+  if (dayDiff === 1) return `Yest ${time}`
+  if (dayDiff < 7) {
+    const day = date.toLocaleDateString([], { weekday: 'short' })
+    return `${day} ${time}`
   }
-  return date.toLocaleDateString([], { month: 'short', day: 'numeric' })
+
+  if (date.getFullYear() === now.getFullYear()) {
+    return date.toLocaleDateString([], { day: 'numeric', month: 'short' })
+  }
+  return date.toLocaleDateString([], { day: 'numeric', month: 'short', year: '2-digit' })
 }
