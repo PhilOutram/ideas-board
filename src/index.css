@@ -367,9 +367,162 @@ h1 {
   background: var(--accent-soft);
 }
 
+.app-body {
+  flex: 1;
+  display: grid;
+  grid-template-columns: 240px 1fr;
+  min-height: 0;
+}
+
 .app-main {
-  padding: 2rem 1.5rem;
-  max-width: 960px;
-  margin: 0 auto;
+  padding: 2rem 1.75rem;
+  overflow-y: auto;
+}
+
+/* Sidebar */
+.pages-sidebar {
+  border-right: 1px solid var(--border);
+  background: var(--surface);
+  padding: 1rem 0.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  min-height: 0;
+}
+
+.page-create {
+  display: flex;
+  gap: 0.4rem;
+}
+
+.page-create input {
+  flex: 1;
+  font: inherit;
+  font-size: 0.95rem;
+  padding: 0.45rem 0.6rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+  outline: none;
+}
+
+.page-create input:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+
+.page-create button {
+  font: inherit;
+  font-size: 1.1rem;
+  line-height: 1;
+  width: 2rem;
+  background: var(--accent);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.page-create button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.page-create-error {
+  margin: 0;
+  font-size: 0.85rem;
+  color: var(--danger);
+}
+
+.pages-list {
+  overflow-y: auto;
+}
+
+.pages-list ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.pages-empty {
+  margin: 0.5rem 0.25rem;
+}
+
+.page-item {
+  display: block;
   width: 100%;
+  text-align: left;
+  font: inherit;
+  font-size: 0.95rem;
+  padding: 0.45rem 0.6rem;
+  background: none;
+  border: none;
+  border-radius: 6px;
+  color: var(--text);
+  cursor: pointer;
+}
+
+.page-item:hover {
+  background: var(--bg);
+}
+
+.page-item-active {
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-weight: 500;
+}
+
+.page-item-active:hover {
+  background: var(--accent-soft);
+}
+
+/* Page view */
+.page-view {
+  max-width: 760px;
+}
+
+.page-view-header {
+  margin-bottom: 1.25rem;
+}
+
+.page-view-title {
+  margin: 0;
+  font-size: 1.6rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+.page-view-body p {
+  margin: 0;
+}
+
+/* Empty state */
+.empty-state {
+  max-width: 420px;
+}
+
+.empty-state h2 {
+  margin: 0 0 0.4rem;
+  font-size: 1.4rem;
+  font-weight: 600;
+}
+
+.empty-state p {
+  margin: 0;
+}
+
+/* Responsive: stack sidebar above main on narrow screens */
+@media (max-width: 700px) {
+  .app-body {
+    grid-template-columns: 1fr;
+  }
+
+  .pages-sidebar {
+    border-right: none;
+    border-bottom: 1px solid var(--border);
+    max-height: 35vh;
+  }
 }

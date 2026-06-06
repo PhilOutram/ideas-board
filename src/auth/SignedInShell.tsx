@@ -1,12 +1,32 @@
+import { useEffect, useState } from 'react'
 import { signOut, type User } from 'firebase/auth'
 import { auth } from '../firebase'
 import AppTitle from '../components/AppTitle'
+import PagesSidebar from '../pages/PagesSidebar'
+import PageView from '../pages/PageView'
+import { usePages } from '../pages/usePages'
 
 type Props = {
   user: User
 }
 
 export default function SignedInShell({ user }: Props) {
+  const { pages, loading, error, createPage } = usePages(user.uid)
+  const [selectedId, setSelectedId] = useState<string | null>(null)
+
+  // If nothing is selected (first load, or selected page was deleted),
+  // fall back to the most recent page so the user always sees content.
+  useEffect(() => {
+    if (selectedId && pages.some((p) => p.id === selectedId)) return
+    if (pages.length > 0) {
+      setSelectedId(pages[pages.length - 1].id)
+    } else {
+      setSelectedId(null)
+    }
+  }, [pages, selectedId])
+
+  const selectedPage = pages.find((p) => p.id === selectedId) ?? null
+
   async function handleSignOut() {
     await signOut(auth)
   }
@@ -23,11 +43,39 @@ export default function SignedInShell({ user }: Props) {
         </div>
       </header>
 
-      <main className="app-main">
-        <p className="muted">
-          You're signed in. Pages, ideas, and boards are coming in the next steps.
-        </p>
-      </main>
+      <div className="app-body">
+        <PagesSidebar
+          pages={pages}
+          selectedId={selectedId}
+          onSelect={setSelectedId}
+          onCreate={createPage}
+        />
+
+        <main className="app-main">
+          {error ? (
+            <p className="auth-error" role="alert">
+              Couldn't load pages: {error.message}
+            </p>
+          ) : loading ? (
+            <p className="muted">Loading pages...</p>
+          ) : selectedPage ? (
+            <PageView page={selectedPage} />
+          ) : (
+            <EmptyState />
+          )}
+        </main>
+      </div>
+    </div>
+  )
+}
+
+function EmptyState() {
+  return (
+    <div className="empty-state">
+      <h2>Welcome.</h2>
+      <p className="muted">
+        Create your first page in the sidebar to get started.
+      </p>
     </div>
   )
 }

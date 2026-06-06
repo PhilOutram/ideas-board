@@ -1,4 +1,4 @@
-export const VERSION = 'v0.03'
+export const VERSION = 'v0.04'
 
 export type ChangelogEntry = {
   version: string
@@ -9,6 +9,14 @@ export type ChangelogEntry = {
 // Newest first. Bump VERSION and add an entry here on every commit so
 // the deployed build always shows exactly what shipped.
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: 'v0.04',
+    date: '2026-06-06',
+    notes: [
+      'Pages: create, list, and select pages from a sidebar. Pages are stored in Firestore and sync across devices in real time.',
+      'Each page is scoped to its creator (owner uid), so accounts are isolated even though Firestore rules currently allow any signed-in user.',
+    ],
+  },
   {
     version: 'v0.03',
     date: '2026-06-06',
