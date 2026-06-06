@@ -5,6 +5,7 @@ import {
   signInWithEmailAndPassword,
 } from 'firebase/auth'
 import { auth } from '../firebase'
+import AppTitle from '../components/AppTitle'
 
 type Mode = 'signin' | 'signup'
 
@@ -43,7 +44,7 @@ export default function AuthScreen() {
   return (
     <main className="auth-screen">
       <div className="auth-card">
-        <h1 className="auth-title">Ideas Board</h1>
+        <AppTitle size="lg" />
         <p className="auth-subtitle">
           {isSignup ? 'Create your account' : 'Sign in to continue'}
         </p>

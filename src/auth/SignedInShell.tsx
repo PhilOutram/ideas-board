@@ -1,5 +1,6 @@
 import { signOut, type User } from 'firebase/auth'
 import { auth } from '../firebase'
+import AppTitle from '../components/AppTitle'
 
 type Props = {
   user: User
@@ -13,7 +14,7 @@ export default function SignedInShell({ user }: Props) {
   return (
     <div className="app-shell">
       <header className="app-header">
-        <h1 className="app-title">Ideas Board</h1>
+        <AppTitle />
         <div className="app-user">
           <span className="muted">{user.email}</span>
           <button type="button" className="link-button" onClick={handleSignOut}>
