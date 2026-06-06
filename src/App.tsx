@@ -1,13 +1,35 @@
-import { firebaseApp } from './firebase'
+import { useEffect, useState } from 'react'
+import { onAuthStateChanged, type User } from 'firebase/auth'
+import { auth } from './firebase'
+import AuthScreen from './auth/AuthScreen'
+import SignedInShell from './auth/SignedInShell'
+
+type AuthState =
+  | { status: 'loading' }
+  | { status: 'signed-in'; user: User }
+  | { status: 'signed-out' }
 
 export default function App() {
-  return (
-    <main className="scaffold">
-      <h1>Ideas Board</h1>
-      <p>Vite + React + TypeScript + Firebase scaffold is running.</p>
-      <p className="muted">
-        Firebase project: <code>{firebaseApp.options.projectId ?? '(not configured)'}</code>
-      </p>
-    </main>
-  )
+  const [state, setState] = useState<AuthState>({ status: 'loading' })
+
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      setState(user ? { status: 'signed-in', user } : { status: 'signed-out' })
+    })
+    return unsubscribe
+  }, [])
+
+  if (state.status === 'loading') {
+    return (
+      <main className="loading-screen">
+        <p className="muted">Loading...</p>
+      </main>
+    )
+  }
+
+  if (state.status === 'signed-out') {
+    return <AuthScreen />
+  }
+
+  return <SignedInShell user={state.user} />
 }
