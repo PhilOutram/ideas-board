@@ -121,8 +121,8 @@ cd ideas-board
 ### 7. Install Dependencies and Run Locally
 
 ```bash
-npm install
-npm start
+pnpm install
+pnpm start
 ```
 
 This opens the app at `http://localhost:3000`.
@@ -156,7 +156,7 @@ This opens the app at `http://localhost:3000`.
 ### Manual Deploy
 
 ```bash
-npm install -g vercel
+pnpm add -g vercel
 vercel login
 vercel
 ```
