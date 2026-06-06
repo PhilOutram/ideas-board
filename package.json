@@ -4,9 +4,10 @@
   "description": "AI-friendly hierarchical ideas board with Firebase integration",
   "private": true,
   "dependencies": {
+    "@vercel/analytics": "^2.0.1",
+    "firebase": "^10.7.0",
     "react": "^18.2.0",
-    "react-dom": "^18.2.0",
-    "firebase": "^10.7.0"
+    "react-dom": "^18.2.0"
   },
   "scripts": {
     "start": "react-scripts start",
