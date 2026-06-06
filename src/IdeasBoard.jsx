@@ -569,6 +569,7 @@ export default function IdeasBoard() {
       }
     });
     return unsubscribe;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Load pages
