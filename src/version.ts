@@ -1,4 +1,4 @@
-export const VERSION = 'v0.08'
+export const VERSION = 'v0.09'
 
 export type ChangelogEntry = {
   version: string
@@ -9,6 +9,15 @@ export type ChangelogEntry = {
 // Newest first. Bump VERSION and add an entry here on every commit so
 // the deployed build always shows exactly what shipped.
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: 'v0.09',
+    date: '2026-06-07',
+    notes: [
+      'Click an idea card to open it. The drill-in view shows every board (Messy, Tidy, Context, Memory) and lets you edit the title and each board inline - changes auto-save as you type and sync across devices.',
+      'Add your own boards to an idea on the fly (e.g. "mechanics", "lore", "polished pitch") - no fixed templates.',
+      'Delete an idea from inside its drill-in view (with a confirm step).',
+    ],
+  },
   {
     version: 'v0.08',
     date: '2026-06-07',

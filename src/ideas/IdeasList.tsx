@@ -6,6 +6,7 @@ type Props = {
   loading: boolean
   error: Error | null
   setTemperature: (id: string, temperature: Temperature) => Promise<void>
+  onOpen: (id: string) => void
 }
 
 const TEMP_META: Record<Temperature, { icon: string; label: string }> = {
@@ -33,7 +34,7 @@ function byTemperatureThenRecent(a: Idea, b: Idea): number {
   return bEdited - aEdited
 }
 
-export default function IdeasList({ ideas, loading, error, setTemperature }: Props) {
+export default function IdeasList({ ideas, loading, error, setTemperature, onOpen }: Props) {
   // Cold ideas are never deleted, just de-emphasised into a collapsible
   // section that starts closed so warm/hot work stays front and centre.
   const [showCold, setShowCold] = useState(false)
@@ -68,7 +69,12 @@ export default function IdeasList({ ideas, loading, error, setTemperature }: Pro
       ) : (
         <ul className="ideas-grid">
           {active.map((idea) => (
-            <IdeaCard key={idea.id} idea={idea} setTemperature={setTemperature} />
+            <IdeaCard
+              key={idea.id}
+              idea={idea}
+              setTemperature={setTemperature}
+              onOpen={onOpen}
+            />
           ))}
         </ul>
       )}
@@ -86,7 +92,12 @@ export default function IdeasList({ ideas, loading, error, setTemperature }: Pro
           {showCold && (
             <ul className="ideas-grid">
               {cold.map((idea) => (
-                <IdeaCard key={idea.id} idea={idea} setTemperature={setTemperature} />
+                <IdeaCard
+              key={idea.id}
+              idea={idea}
+              setTemperature={setTemperature}
+              onOpen={onOpen}
+            />
               ))}
             </ul>
           )}
@@ -99,9 +110,10 @@ export default function IdeasList({ ideas, loading, error, setTemperature }: Pro
 type CardProps = {
   idea: Idea
   setTemperature: (id: string, temperature: Temperature) => Promise<void>
+  onOpen: (id: string) => void
 }
 
-function IdeaCard({ idea, setTemperature }: CardProps) {
+function IdeaCard({ idea, setTemperature, onOpen }: CardProps) {
   const meta = TEMP_META[idea.temperature]
   const preview = idea.boards.messy.trim()
 
@@ -124,10 +136,15 @@ function IdeaCard({ idea, setTemperature }: CardProps) {
       >
         <span aria-hidden="true">{meta.icon}</span>
       </button>
-      <div className="idea-card-body">
-        <p className="idea-title">{idea.title || '(untitled idea)'}</p>
-        {preview && <p className="idea-preview">{preview}</p>}
-      </div>
+      <button
+        type="button"
+        className="idea-open"
+        onClick={() => onOpen(idea.id)}
+        aria-label={`Open idea: ${idea.title || 'untitled idea'}`}
+      >
+        <span className="idea-title">{idea.title || '(untitled idea)'}</span>
+        {preview && <span className="idea-preview">{preview}</span>}
+      </button>
     </li>
   )
 }

@@ -50,8 +50,21 @@ type UseIdeasResult = {
   error: Error | null
   createIdea: (input: NewIdeaInput) => Promise<string>
   updateIdea: (id: string, patch: IdeaPatch) => Promise<void>
+  updateBoard: (id: string, key: string, value: string) => Promise<void>
+  addBoard: (id: string, key: string) => Promise<void>
   setTemperature: (id: string, temperature: Temperature) => Promise<void>
   deleteIdea: (id: string) => Promise<void>
+}
+
+// Firestore field-path segments can't contain dots, so board keys are
+// sanitised to a safe slug before they ever reach `boards.<key>`. The
+// human-facing name is reconstructed for display in the modal.
+export function boardKeyFromName(name: string): string {
+  return name
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '_')
+    .replace(/^_+|_+$/g, '')
 }
 
 export function useIdeas(pageId: string | null): UseIdeasResult {
@@ -135,6 +148,23 @@ export function useIdeas(pageId: string | null): UseIdeasResult {
     })
   }
 
+  // Save a single board via a dotted field path so concurrent edits to
+  // sibling boards don't clobber each other (a whole-`boards` write would).
+  async function updateBoard(id: string, key: string, value: string): Promise<void> {
+    if (!pageId) throw new Error('No page selected.')
+    await updateDoc(doc(db, 'pages', pageId, 'ideas', id), {
+      [`boards.${key}`]: value,
+      lastEdited: serverTimestamp(),
+    })
+  }
+
+  // Add an empty custom board. Caller is responsible for rejecting blank or
+  // already-present keys before calling so we never silently wipe a board.
+  async function addBoard(id: string, key: string): Promise<void> {
+    if (!key) throw new Error('Board needs a name.')
+    await updateBoard(id, key, '')
+  }
+
   async function setTemperature(id: string, temperature: Temperature): Promise<void> {
     await updateIdea(id, { temperature })
   }
@@ -144,5 +174,15 @@ export function useIdeas(pageId: string | null): UseIdeasResult {
     await deleteDoc(doc(db, 'pages', pageId, 'ideas', id))
   }
 
-  return { ideas, loading, error, createIdea, updateIdea, setTemperature, deleteIdea }
+  return {
+    ideas,
+    loading,
+    error,
+    createIdea,
+    updateIdea,
+    updateBoard,
+    addBoard,
+    setTemperature,
+    deleteIdea,
+  }
 }
