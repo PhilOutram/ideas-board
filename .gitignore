@@ -37,3 +37,7 @@ Thumbs.db
 
 # TypeScript incremental build cache
 *.tsbuildinfo
+
+# Emitted from vite.config.ts by `tsc -b` - source of truth is the .ts
+vite.config.js
+vite.config.d.ts

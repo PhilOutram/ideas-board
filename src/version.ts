@@ -1,4 +1,4 @@
-export const VERSION = 'v0.07'
+export const VERSION = 'v0.08'
 
 export type ChangelogEntry = {
   version: string
@@ -9,6 +9,15 @@ export type ChangelogEntry = {
 // Newest first. Bump VERSION and add an entry here on every commit so
 // the deployed build always shows exactly what shipped.
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: 'v0.08',
+    date: '2026-06-07',
+    notes: [
+      'Ideas! Use an inbox item\'s "..." menu to "Promote to idea" - it becomes a card with the default boards, seeded from your captured text, and leaves the inbox.',
+      'Ideas show as cards sorted by temperature: hot floats to the top, then warm. New ideas default to warm.',
+      'Click the temperature badge on a card to cycle cold -> warm -> hot. Cold ideas drop into a collapsible "Cold / archived" section (never deleted, just tucked away).',
+    ],
+  },
   {
     version: 'v0.07',
     date: '2026-06-06',

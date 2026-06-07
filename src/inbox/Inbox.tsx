@@ -1,13 +1,15 @@
 import { useRef, useState, type FormEvent } from 'react'
 import type { Page, PagePatch } from '../pages/usePages'
+import type { NewIdeaInput } from '../ideas/useIdeas'
 import { useQuickIdeas, type QuickIdea } from './useQuickIdeas'
 
 type Props = {
   page: Page
   updatePage: (id: string, patch: PagePatch) => Promise<void>
+  createIdea: (input: NewIdeaInput) => Promise<string>
 }
 
-export default function Inbox({ page, updatePage }: Props) {
+export default function Inbox({ page, updatePage, createIdea }: Props) {
   const { quickIdeas, loading, error, addQuickIdea, deleteQuickIdea } = useQuickIdeas(page.id)
   const [draft, setDraft] = useState('')
   const inputRef = useRef<HTMLInputElement>(null)
@@ -24,6 +26,14 @@ export default function Inbox({ page, updatePage }: Props) {
       console.error('Failed to add quick idea:', err)
       setDraft(text) // restore so the user doesn't lose it
     }
+  }
+
+  async function promote(item: QuickIdea) {
+    // Promote the quick idea into a formal idea (default boards, warm),
+    // seeding the messy board with the captured text, then clear it from
+    // the inbox so it lives in exactly one place.
+    await createIdea({ title: item.text, messy: item.text })
+    await deleteQuickIdea(item.id)
   }
 
   async function sendTo(field: 'memory' | 'context', item: QuickIdea) {
@@ -64,6 +74,7 @@ export default function Inbox({ page, updatePage }: Props) {
             <InboxItem
               key={item.id}
               item={item}
+              onPromote={() => promote(item)}
               onSendToMemory={() => sendTo('memory', item)}
               onSendToContext={() => sendTo('context', item)}
               onDelete={() => deleteQuickIdea(item.id)}
@@ -77,12 +88,13 @@ export default function Inbox({ page, updatePage }: Props) {
 
 type ItemProps = {
   item: QuickIdea
+  onPromote: () => Promise<void> | void
   onSendToMemory: () => Promise<void> | void
   onSendToContext: () => Promise<void> | void
   onDelete: () => Promise<void> | void
 }
 
-function InboxItem({ item, onSendToMemory, onSendToContext, onDelete }: ItemProps) {
+function InboxItem({ item, onPromote, onSendToMemory, onSendToContext, onDelete }: ItemProps) {
   const [menuOpen, setMenuOpen] = useState(false)
 
   const created = item.created?.toDate() ?? null
@@ -124,6 +136,9 @@ function InboxItem({ item, onSendToMemory, onSendToContext, onDelete }: ItemProp
         </button>
         {menuOpen && (
           <div className="popover" role="menu">
+            <button type="button" role="menuitem" onClick={() => run(onPromote)}>
+              Promote to idea
+            </button>
             <button type="button" role="menuitem" onClick={() => run(onSendToMemory)}>
               Send to memory
             </button>
