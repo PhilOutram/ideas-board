@@ -1,9 +1,11 @@
-import { useEffect, useRef, useState, type FormEvent } from 'react'
+import { Fragment, useEffect, useRef, useState, type FormEvent } from 'react'
 import type { Idea } from './useIdeas'
 import { boardKeyFromName } from './useIdeas'
+import type { MemorySource } from './inheritance'
 
 type Props = {
   idea: Idea
+  inherited: MemorySource[]
   onUpdateTitle: (title: string) => void
   onUpdateBoard: (key: string, value: string) => void
   onAddBoard: (key: string) => Promise<void>
@@ -17,6 +19,7 @@ const DEFAULT_BOARDS = ['messy', 'tidy', 'context', 'memory'] as const
 
 export default function IdeaModal({
   idea,
+  inherited,
   onUpdateTitle,
   onUpdateBoard,
   onAddBoard,
@@ -59,12 +62,18 @@ export default function IdeaModal({
 
         <div className="modal-body">
           {orderedKeys.map((key) => (
-            <BoardEditor
-              key={key}
-              label={labelForBoard(key)}
-              value={idea.boards[key] ?? ''}
-              onSave={(value) => onUpdateBoard(key, value)}
-            />
+            <Fragment key={key}>
+              {/* Inherited memory sits directly above this idea's own Memory
+                  board so the local value visibly takes precedence (4a). */}
+              {key === 'memory' && inherited.length > 0 && (
+                <InheritedMemory sources={inherited} />
+              )}
+              <BoardEditor
+                label={labelForBoard(key)}
+                value={idea.boards[key] ?? ''}
+                onSave={(value) => onUpdateBoard(key, value)}
+              />
+            </Fragment>
           ))}
 
           <AddBoard existingKeys={Object.keys(idea.boards)} onAdd={onAddBoard} />
@@ -125,6 +134,25 @@ function TitleEditor({ value, onSave }: { value: string; onSave: (v: string) => 
       onChange={(e) => onChange(e.target.value)}
       onBlur={flush}
     />
+  )
+}
+
+// Read-only block of memory inherited from ancestors. Not editable here -
+// it's edited where it lives (the parent page), and cascades down on change.
+function InheritedMemory({ sources }: { sources: MemorySource[] }) {
+  return (
+    <section className="inherited-memory">
+      <h3 className="board-label inherited-label">Inherited memory</h3>
+      {sources.map((source) => (
+        <div key={source.label} className="inherited-source">
+          <p className="inherited-source-label">{source.label}</p>
+          <pre className="inherited-text">{source.memory}</pre>
+        </div>
+      ))}
+      <p className="inherited-note muted">
+        This idea's own memory below takes precedence.
+      </p>
+    </section>
   )
 }
 

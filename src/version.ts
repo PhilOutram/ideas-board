@@ -1,4 +1,4 @@
-export const VERSION = 'v0.09'
+export const VERSION = 'v0.10'
 
 export type ChangelogEntry = {
   version: string
@@ -9,6 +9,14 @@ export type ChangelogEntry = {
 // Newest first. Bump VERSION and add an entry here on every commit so
 // the deployed build always shows exactly what shipped.
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: 'v0.10',
+    date: '2026-06-07',
+    notes: [
+      'Memory inheritance: open an idea and you now see an "Inherited memory" block - the parent page\'s memory - directly above the idea\'s own Memory board. The idea\'s own memory takes precedence.',
+      'Inheritance is live: edit a page\'s memory and every idea under it reflects the change automatically (nothing is copied or duplicated).',
+    ],
+  },
   {
     version: 'v0.09',
     date: '2026-06-07',

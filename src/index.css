@@ -844,6 +844,50 @@ h1 {
   box-shadow: 0 0 0 3px var(--accent-soft);
 }
 
+/* Inherited memory: read-only, visibly upstream of the editable Memory board */
+.inherited-memory {
+  margin-top: 1rem;
+  padding: 0.75rem 0.85rem;
+  background: var(--bg);
+  border: 1px dashed var(--border);
+  border-radius: 8px;
+}
+
+.inherited-label {
+  margin-bottom: 0.5rem;
+}
+
+.inherited-source + .inherited-source {
+  margin-top: 0.6rem;
+}
+
+.inherited-source-label {
+  margin: 0 0 0.2rem;
+  font-size: 0.78rem;
+  font-weight: 500;
+  color: var(--text-muted);
+}
+
+.inherited-text {
+  margin: 0;
+  font: inherit;
+  font-size: 0.92rem;
+  color: var(--text);
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.inherited-note {
+  margin: 0.6rem 0 0;
+  font-style: italic;
+}
+
+/* The Memory board's own editor follows the inherited block with no extra
+   top gap, so the two read as one "inherited then local" memory group. */
+.inherited-memory + .board-editor {
+  margin-top: 0.6rem;
+}
+
 .add-board-trigger {
   margin-top: 1rem;
   font: inherit;

@@ -3,6 +3,7 @@ import Inbox from '../inbox/Inbox'
 import IdeasList from '../ideas/IdeasList'
 import IdeaModal from '../ideas/IdeaModal'
 import { useIdeas } from '../ideas/useIdeas'
+import { inheritedMemory } from '../ideas/inheritance'
 import type { Page, PagePatch } from './usePages'
 
 type Props = {
@@ -52,6 +53,7 @@ export default function PageView({ page, updatePage }: Props) {
       {openIdea && (
         <IdeaModal
           idea={openIdea}
+          inherited={inheritedMemory(page)}
           onUpdateTitle={(title) => updateIdea(openIdea.id, { title })}
           onUpdateBoard={(key, value) => updateBoard(openIdea.id, key, value)}
           onAddBoard={(key) => addBoard(openIdea.id, key)}
