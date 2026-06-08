@@ -1,4 +1,4 @@
-export const VERSION = 'v0.12'
+export const VERSION = 'v0.13'
 
 export type ChangelogEntry = {
   version: string
@@ -9,6 +9,14 @@ export type ChangelogEntry = {
 // Newest first. Bump VERSION and add an entry here on every commit so
 // the deployed build always shows exactly what shipped.
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: 'v0.13',
+    date: '2026-06-08',
+    notes: [
+      'Installable app: add Ideas Board to your phone home screen ("Install app" / "Add to Home Screen") for one-tap, full-screen access. Uses your app icon.',
+      'Proper multi-size and padded icons get refined in a later polish pass.',
+    ],
+  },
   {
     version: 'v0.12',
     date: '2026-06-08',
