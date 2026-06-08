@@ -543,6 +543,149 @@ h1 {
   cursor: not-allowed;
 }
 
+.inbox-mic {
+  flex-shrink: 0;
+  font-size: 1.1rem;
+  line-height: 1;
+  padding: 0 0.7rem;
+  background: var(--surface);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: border-color 120ms ease, background 120ms ease;
+}
+
+.inbox-mic:hover {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+
+/* Voice capture modal */
+.voice-modal {
+  max-width: 520px;
+}
+
+.voice-hint {
+  margin: 0 0 0.75rem;
+}
+
+.voice-live {
+  min-height: 8rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.voice-recording {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: var(--danger);
+}
+
+.voice-pulse {
+  width: 0.65rem;
+  height: 0.65rem;
+  border-radius: 50%;
+  background: var(--danger);
+  animation: voice-pulse 1.2s ease-in-out infinite;
+}
+
+@keyframes voice-pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.4; transform: scale(0.75); }
+}
+
+.voice-live-text {
+  margin: 0;
+  font-size: 1.05rem;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.voice-interim {
+  color: var(--text-muted);
+}
+
+.voice-textarea {
+  width: 100%;
+  font: inherit;
+  font-size: 1rem;
+  color: var(--text);
+  padding: 0.7rem 0.8rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  outline: none;
+  resize: vertical;
+  transition: border-color 120ms ease, box-shadow 120ms ease;
+}
+
+.voice-textarea:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+
+.voice-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.85rem 1.25rem;
+  border-top: 1px solid var(--border);
+}
+
+.voice-stop,
+.voice-record,
+.voice-save {
+  font: inherit;
+  font-size: 0.95rem;
+  padding: 0.5rem 0.95rem;
+  border-radius: 8px;
+  cursor: pointer;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+}
+
+.voice-stop {
+  color: var(--danger);
+  border-color: var(--danger);
+}
+
+.voice-stop:hover {
+  background: var(--danger-bg);
+}
+
+.voice-record:hover {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.voice-save {
+  background: var(--accent);
+  color: white;
+  border-color: var(--accent);
+  margin-left: auto;
+}
+
+.voice-save:hover:not(:disabled) {
+  opacity: 0.92;
+}
+
+.voice-save:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* When Stop is the only primary action, push Cancel to the right */
+.voice-actions .voice-stop {
+  margin-right: auto;
+}
+
 .inbox-status {
   margin: 0.5rem 0;
 }

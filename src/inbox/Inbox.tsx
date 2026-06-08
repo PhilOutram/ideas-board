@@ -1,6 +1,7 @@
 import { useRef, useState, type FormEvent } from 'react'
 import type { Page, PagePatch } from '../pages/usePages'
 import type { NewIdeaInput } from '../ideas/useIdeas'
+import VoiceCaptureModal from '../voice/VoiceCaptureModal'
 import { useQuickIdeas, type QuickIdea } from './useQuickIdeas'
 
 type Props = {
@@ -12,6 +13,7 @@ type Props = {
 export default function Inbox({ page, updatePage, createIdea }: Props) {
   const { quickIdeas, loading, error, addQuickIdea, deleteQuickIdea } = useQuickIdeas(page.id)
   const [draft, setDraft] = useState('')
+  const [voiceOpen, setVoiceOpen] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
 
   async function handleSubmit(e: FormEvent<HTMLFormElement>) {
@@ -58,7 +60,23 @@ export default function Inbox({ page, updatePage, createIdea }: Props) {
           autoFocus
         />
         <button type="submit" disabled={!draft.trim()}>Add</button>
+        <button
+          type="button"
+          className="inbox-mic"
+          onClick={() => setVoiceOpen(true)}
+          aria-label="Capture by voice"
+          title="Capture by voice"
+        >
+          🎤
+        </button>
       </form>
+
+      {voiceOpen && (
+        <VoiceCaptureModal
+          onSave={(text) => addQuickIdea(text)}
+          onClose={() => setVoiceOpen(false)}
+        />
+      )}
 
       {error && (
         <p className="auth-error" role="alert">Couldn't load inbox: {error.message}</p>

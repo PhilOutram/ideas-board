@@ -1,4 +1,4 @@
-export const VERSION = 'v0.10'
+export const VERSION = 'v0.11'
 
 export type ChangelogEntry = {
   version: string
@@ -9,6 +9,14 @@ export type ChangelogEntry = {
 // Newest first. Bump VERSION and add an entry here on every commit so
 // the deployed build always shows exactly what shipped.
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: 'v0.11',
+    date: '2026-06-08',
+    notes: [
+      'Voice capture (beta): tap the mic in a page inbox, speak, and your words transcribe live. Hit stop, tweak the text if needed, and save it straight to the inbox.',
+      'Works in Chrome on Android and desktop today. An iPhone/Firefox fallback and one-tap AI tidy-up are coming next.',
+    ],
+  },
   {
     version: 'v0.10',
     date: '2026-06-07',
