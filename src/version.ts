@@ -1,4 +1,4 @@
-export const VERSION = 'v0.13'
+export const VERSION = 'v0.14'
 
 export type ChangelogEntry = {
   version: string
@@ -9,6 +9,15 @@ export type ChangelogEntry = {
 // Newest first. Bump VERSION and add an entry here on every commit so
 // the deployed build always shows exactly what shipped.
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: 'v0.14',
+    date: '2026-06-09',
+    notes: [
+      'Voice capture duplication on Android really fixed this time: the transcript now detects when the browser is just re-reporting the same phrase as it grows, and replaces rather than stacks it.',
+      'Voice capture now fails gracefully in browsers without speech support (e.g. Edge, Firefox): instead of getting stuck on "Listening...", it shows a clear message and lets you type. Reliable voice in those browsers needs the upcoming server-side fallback.',
+      'Quieten a console warning by adding the standard mobile-web-app-capable tag.',
+    ],
+  },
   {
     version: 'v0.13',
     date: '2026-06-08',

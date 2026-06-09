@@ -81,23 +81,42 @@ export function useVoiceCapture(lang = 'en-GB'): UseVoiceCapture {
   // stale state value. Drives the auto-restart-on-end behaviour below.
   const wantListeningRef = useRef(false)
 
-  // Transcript is rebuilt, never appended-to: Android Chrome re-fires
-  // `onresult` for the same segment repeatedly (each time a word longer and
-  // flagged final), so appending deltas duplicates wildly. Instead we store
-  // each final result by its index in the current recognition session
-  // (a re-fire overwrites its slot) and keep a committed base for text from
-  // earlier sessions, since the engine resets indices on each auto-restart.
+  // Android Chrome re-reports a phrase as it grows, emitting each longer
+  // version as a *final* result (often at a new index): "okay" then
+  // "okay here's" then "okay here's my"... Appending or index-keying both
+  // duplicate. So we track the current session's final text as ONE string
+  // and merge each incoming final: if it extends what we have, replace
+  // (cumulative growth); if it's genuinely new, append. `committedRef` holds
+  // text from earlier sessions (the engine resets between auto-restarts).
   const committedRef = useRef('') // finalized text from previous sessions
-  const sessionFinalsRef = useRef<string[]>([]) // this session's finals, by index
+  const sessionFinalRef = useRef('') // this session's merged final text
+
+  const mergeFinal = useCallback((incoming: string) => {
+    const next = incoming.trim()
+    if (!next) return
+    const prev = sessionFinalRef.current
+    if (!prev) {
+      sessionFinalRef.current = next
+      return
+    }
+    const prevLower = prev.toLowerCase()
+    const nextLower = next.toLowerCase()
+    if (nextLower.startsWith(prevLower)) {
+      sessionFinalRef.current = next // cumulative growth - replace
+    } else if (prevLower.startsWith(nextLower)) {
+      // shorter restatement of what we already have - ignore
+    } else {
+      sessionFinalRef.current = joinText(prev, next) // a new segment - append
+    }
+  }, [])
 
   const composeFinal = useCallback(() => {
-    const session = sessionFinalsRef.current.join(' ')
-    return joinText(committedRef.current, session)
+    return joinText(committedRef.current, sessionFinalRef.current)
   }, [])
 
   const reset = useCallback(() => {
     committedRef.current = ''
-    sessionFinalsRef.current = []
+    sessionFinalRef.current = ''
     setTranscript('')
     setInterim('')
     setError(null)
@@ -132,8 +151,7 @@ export function useVoiceCapture(lang = 'en-GB'): UseVoiceCapture {
         const result = event.results[i]
         const text = result[0]?.transcript ?? ''
         if (result.isFinal) {
-          // Overwrite this index rather than append - dedupes Android re-fires.
-          sessionFinalsRef.current[i] = text.trim()
+          mergeFinal(text)
         } else {
           interimChunk += text
         }
@@ -143,24 +161,32 @@ export function useVoiceCapture(lang = 'en-GB'): UseVoiceCapture {
     }
 
     rec.onerror = (event) => {
-      if (event.error === 'not-allowed' || event.error === 'service-not-allowed') {
-        wantListeningRef.current = false
-        setError('Microphone access was blocked. Allow it in your browser to use voice.')
-        setListening(false)
-      } else if (event.error === 'no-speech' || event.error === 'aborted') {
+      if (event.error === 'no-speech' || event.error === 'aborted') {
         // Benign - onend will restart if we're still meant to be listening.
-      } else {
-        setError(`Voice capture error: ${event.error}`)
+        return
       }
+      // Everything else is fatal for this session: stop and let the modal
+      // fall back to the editable text box so the user can type.
+      wantListeningRef.current = false
+      if (event.error === 'not-allowed' || event.error === 'service-not-allowed') {
+        setError('Microphone access was blocked. Allow it in your browser to use voice.')
+      } else if (event.error === 'network') {
+        setError(
+          "Voice recognition isn't available in this browser - it works best in " +
+            'Chrome (desktop or Android). You can type your idea instead; a built-in ' +
+            'fallback for other browsers is coming.',
+        )
+      } else {
+        setError(`Voice capture error: ${event.error}.`)
+      }
+      setListening(false)
     }
 
     rec.onend = () => {
-      // Fold this session's finals into the committed base and clear the
-      // per-session slots, because the engine resets result indices on the
-      // next start() - otherwise session 2's index 0 would overwrite
-      // session 1's first word.
+      // Fold this session's merged final text into the committed base and
+      // clear it, because the engine starts fresh on the next start().
       committedRef.current = composeFinal()
-      sessionFinalsRef.current = []
+      sessionFinalRef.current = ''
 
       // Chrome ends recognition after a pause; restart while the user still
       // wants to capture, so a thinking pause doesn't cut the session short.
@@ -189,7 +215,7 @@ export function useVoiceCapture(lang = 'en-GB'): UseVoiceCapture {
       // Calling start() too soon after a previous run can throw; onend's
       // restart path will recover, so just ignore here.
     }
-  }, [lang, composeFinal])
+  }, [lang, composeFinal, mergeFinal])
 
   // Abort cleanly if the component unmounts mid-capture.
   useEffect(() => {
