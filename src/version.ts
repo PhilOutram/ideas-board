@@ -1,4 +1,4 @@
-export const VERSION = 'v0.14'
+export const VERSION = 'v0.15'
 
 export type ChangelogEntry = {
   version: string
@@ -9,6 +9,16 @@ export type ChangelogEntry = {
 // Newest first. Bump VERSION and add an entry here on every commit so
 // the deployed build always shows exactly what shipped.
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: 'v0.15',
+    date: '2026-06-09',
+    notes: [
+      'AI tidy-up: after a voice capture, your rambly dictation is cleaned up automatically - filler words, false starts and repetition removed, meaning kept. Edit it, or ask for tweaks like "make it shorter" or "as bullets".',
+      'AI thoughts: tap "Add AI thoughts" for suggestions on how to build on the idea plus problems worth considering - keep or discard. Tidy + thoughts also work for typed notes, not just voice.',
+      'The tidied idea saves to your inbox (optionally keeping your original words too).',
+      'Firestore now auto-detects long-polling, quieting connection warnings and making sync more reliable on strict networks.',
+    ],
+  },
   {
     version: 'v0.14',
     date: '2026-06-09',

@@ -686,6 +686,130 @@ h1 {
   margin-right: auto;
 }
 
+/* Capture studio (tidy + thoughts) */
+.studio-section {
+  margin-bottom: 1.1rem;
+}
+
+.studio-label {
+  display: block;
+  margin-bottom: 0.35rem;
+  font-size: 0.78rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+}
+
+.ai-button {
+  font: inherit;
+  font-size: 0.9rem;
+  padding: 0.5rem 0.9rem;
+  background: var(--surface);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: border-color 120ms ease, background 120ms ease;
+}
+
+.ai-button:hover:not(:disabled) {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.ai-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.ai-status {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0.3rem 0;
+  font-size: 0.9rem;
+  color: var(--text-muted);
+}
+
+.ai-error {
+  margin: 0.3rem 0;
+  font-size: 0.85rem;
+  color: var(--danger);
+}
+
+.refine-row {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+
+.refine-row input {
+  flex: 1;
+  min-width: 0;
+  font: inherit;
+  font-size: 0.92rem;
+  padding: 0.45rem 0.6rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  outline: none;
+}
+
+.refine-row input:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+
+.refine-row button {
+  font: inherit;
+  font-size: 0.9rem;
+  padding: 0.45rem 0.85rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.refine-row button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.ai-thoughts-text {
+  margin: 0.4rem 0;
+  padding: 0.6rem 0.7rem;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  white-space: pre-wrap;
+  word-break: break-word;
+  font-size: 0.92rem;
+  line-height: 1.5;
+}
+
+.studio-check {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+  font-size: 0.88rem;
+  color: var(--text-muted);
+}
+
+.spinner {
+  width: 0.85rem;
+  height: 0.85rem;
+  border: 2px solid var(--border);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+  flex-shrink: 0;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
 .inbox-status {
   margin: 0.5rem 0;
 }

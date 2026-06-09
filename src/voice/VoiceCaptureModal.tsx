@@ -1,21 +1,65 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { useVoiceCapture } from './useVoiceCapture'
+import { callAi } from '../ai/aiClient'
 
 type Props = {
-  // Save the captured text. For Layer A this drops it into the inbox (the
-  // page's messy space); AI tidy + the split-view review land in step 2.
+  // Save the captured note to the inbox (the page's messy space). The note is
+  // the AI-tidied text by default (the raw dictation is discarded unless the
+  // user opts to keep it), optionally with an AI "thoughts" section appended.
   onSave: (text: string) => Promise<void> | void
   onClose: () => void
 }
 
 export default function VoiceCaptureModal({ onSave, onClose }: Props) {
   const { supported, listening, transcript, interim, error, start, stop, reset } = useVoiceCapture()
-  const [draft, setDraft] = useState('')
-  const [saving, setSaving] = useState(false)
-  const startedRef = useRef(false)
 
-  // The mic tap that opened this modal is the user gesture, so auto-start
-  // recording on mount - "click record" with no extra tap.
+  const [raw, setRaw] = useState('')
+  const [tidied, setTidied] = useState('')
+  const [thoughts, setThoughts] = useState('')
+  const [includeThoughts, setIncludeThoughts] = useState(true)
+  const [keepOriginal, setKeepOriginal] = useState(false)
+  const [refine, setRefine] = useState('')
+
+  const [tidying, setTidying] = useState(false)
+  const [tidyError, setTidyError] = useState<string | null>(null)
+  const [thinking, setThinking] = useState(false)
+  const [thoughtsError, setThoughtsError] = useState<string | null>(null)
+  const [saving, setSaving] = useState(false)
+
+  const startedRef = useRef(false)
+  const recordedRef = useRef(false) // raw came from a recording (not typing)
+  const autoTidiedRef = useRef(false)
+
+  async function runTidy(source: string, instruction?: string) {
+    const text = source.trim()
+    if (!text) return
+    setTidying(true)
+    setTidyError(null)
+    try {
+      setTidied(await callAi('tidy', text, instruction))
+    } catch (err) {
+      setTidyError(err instanceof Error ? err.message : 'Could not tidy the text.')
+    } finally {
+      setTidying(false)
+    }
+  }
+
+  async function runThoughts() {
+    const base = (tidied.trim() || raw.trim())
+    if (!base) return
+    setThinking(true)
+    setThoughtsError(null)
+    try {
+      setThoughts(await callAi('extend', base))
+      setIncludeThoughts(true)
+    } catch (err) {
+      setThoughtsError(err instanceof Error ? err.message : 'Could not get thoughts.')
+    } finally {
+      setThinking(false)
+    }
+  }
+
+  // Auto-start recording on open - the mic tap was the gesture.
   useEffect(() => {
     if (supported && !startedRef.current) {
       startedRef.current = true
@@ -24,11 +68,23 @@ export default function VoiceCaptureModal({ onSave, onClose }: Props) {
     }
   }, [supported, start, reset])
 
-  // When recording stops, seed the editable draft with what was captured
-  // (only if the user hasn't already typed something).
+  // Once recording stops, move the captured text into the editable raw box.
   useEffect(() => {
-    if (!listening && transcript) setDraft((d) => d || transcript)
-  }, [listening, transcript])
+    if (!listening && transcript && !raw) {
+      recordedRef.current = true
+      setRaw(transcript)
+    }
+  }, [listening, transcript, raw])
+
+  // Auto-tidy a fresh dictation once (typed text is tidied manually instead).
+  useEffect(() => {
+    if (raw && recordedRef.current && !autoTidiedRef.current) {
+      autoTidiedRef.current = true
+      void runTidy(raw)
+    }
+    // runTidy is intentionally omitted - this should fire once per recording.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [raw])
 
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
@@ -39,26 +95,47 @@ export default function VoiceCaptureModal({ onSave, onClose }: Props) {
   }, [onClose])
 
   function recordAgain() {
-    setDraft('')
+    setRaw('')
+    setTidied('')
+    setThoughts('')
+    setTidyError(null)
+    setThoughtsError(null)
+    setIncludeThoughts(true)
+    setKeepOriginal(false)
+    setRefine('')
+    recordedRef.current = false
+    autoTidiedRef.current = false
     reset()
     start()
   }
 
+  function handleRefine(e: FormEvent<HTMLFormElement>) {
+    e.preventDefault()
+    const instruction = refine.trim()
+    if (!instruction) return
+    void runTidy(tidied.trim() || raw, instruction)
+    setRefine('')
+  }
+
   async function handleSave() {
-    const text = (draft || transcript).trim()
-    if (!text) return
+    const primary = (tidied.trim() || raw.trim())
+    if (!primary) return
+    const parts = [primary]
+    if (includeThoughts && thoughts.trim()) parts.push(`AI thoughts:\n${thoughts.trim()}`)
+    if (keepOriginal && raw.trim() && raw.trim() !== primary) {
+      parts.push(`Original:\n${raw.trim()}`)
+    }
     setSaving(true)
     try {
-      await onSave(text)
+      await onSave(parts.join('\n\n'))
       onClose()
     } catch (err) {
-      console.error('Failed to save voice capture:', err)
+      console.error('Failed to save capture:', err)
       setSaving(false)
     }
   }
 
-  const liveText = joinForDisplay(transcript, interim)
-  const canSave = (draft || transcript).trim().length > 0
+  const canSave = (tidied.trim() || raw.trim()).length > 0
 
   return (
     <div className="modal-overlay" onClick={onClose}>
@@ -77,13 +154,6 @@ export default function VoiceCaptureModal({ onSave, onClose }: Props) {
         </header>
 
         <div className="modal-body">
-          {!supported && (
-            <p className="voice-hint muted">
-              This browser can't do in-app voice yet (an iPhone/Firefox fallback is coming).
-              You can still type your idea below.
-            </p>
-          )}
-
           {error && <p className="auth-error" role="alert">{error}</p>}
 
           {listening ? (
@@ -95,18 +165,104 @@ export default function VoiceCaptureModal({ onSave, onClose }: Props) {
               <p className="voice-live-text">
                 {transcript && <span>{transcript} </span>}
                 <span className="voice-interim">{interim}</span>
-                {!liveText && <span className="muted">Start speaking...</span>}
+                {!transcript && !interim && <span className="muted">Start speaking...</span>}
               </p>
             </div>
           ) : (
-            <textarea
-              className="voice-textarea"
-              value={draft}
-              placeholder="Your idea will appear here - speak, or type."
-              onChange={(e) => setDraft(e.target.value)}
-              rows={5}
-              autoFocus
-            />
+            <>
+              <section className="studio-section">
+                <label className="studio-label">What you said</label>
+                <textarea
+                  className="voice-textarea"
+                  value={raw}
+                  placeholder="Speak, or type your idea here."
+                  onChange={(e) => setRaw(e.target.value)}
+                  rows={3}
+                />
+              </section>
+
+              <section className="studio-section">
+                <label className="studio-label">Tidied</label>
+                {tidying ? (
+                  <p className="ai-status"><span className="spinner" aria-hidden="true" /> Tidying with AI...</p>
+                ) : tidied ? (
+                  <>
+                    <textarea
+                      className="voice-textarea"
+                      value={tidied}
+                      onChange={(e) => setTidied(e.target.value)}
+                      rows={4}
+                    />
+                    <form className="refine-row" onSubmit={handleRefine}>
+                      <input
+                        value={refine}
+                        placeholder="Ask for a tweak: shorter, as bullets..."
+                        onChange={(e) => setRefine(e.target.value)}
+                        aria-label="Refine instruction"
+                      />
+                      <button type="submit" disabled={!refine.trim()}>Refine</button>
+                    </form>
+                  </>
+                ) : (
+                  <>
+                    {tidyError && <p className="ai-error">{tidyError}</p>}
+                    <button
+                      type="button"
+                      className="ai-button"
+                      onClick={() => runTidy(raw)}
+                      disabled={!raw.trim()}
+                    >
+                      ✨ Tidy with AI
+                    </button>
+                  </>
+                )}
+              </section>
+
+              <section className="studio-section">
+                <label className="studio-label">AI thoughts</label>
+                {thinking ? (
+                  <p className="ai-status"><span className="spinner" aria-hidden="true" /> Thinking...</p>
+                ) : thoughts ? (
+                  <>
+                    <div className="ai-thoughts-text">{thoughts}</div>
+                    <label className="studio-check">
+                      <input
+                        type="checkbox"
+                        checked={includeThoughts}
+                        onChange={(e) => setIncludeThoughts(e.target.checked)}
+                      />
+                      Include these thoughts in the saved note
+                    </label>
+                    <button type="button" className="ai-button" onClick={runThoughts}>
+                      ↻ Regenerate
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    {thoughtsError && <p className="ai-error">{thoughtsError}</p>}
+                    <button
+                      type="button"
+                      className="ai-button"
+                      onClick={runThoughts}
+                      disabled={!(tidied.trim() || raw.trim())}
+                    >
+                      💡 Add AI thoughts
+                    </button>
+                  </>
+                )}
+              </section>
+
+              {tidied.trim() && raw.trim() && (
+                <label className="studio-check">
+                  <input
+                    type="checkbox"
+                    checked={keepOriginal}
+                    onChange={(e) => setKeepOriginal(e.target.checked)}
+                  />
+                  Also keep my original words
+                </label>
+              )}
+            </>
           )}
         </div>
 
@@ -119,7 +275,7 @@ export default function VoiceCaptureModal({ onSave, onClose }: Props) {
             <>
               {supported && (
                 <button type="button" className="voice-record" onClick={recordAgain}>
-                  ● {transcript ? 'Record again' : 'Record'}
+                  ● {raw ? 'Record again' : 'Record'}
                 </button>
               )}
               <button
@@ -139,8 +295,4 @@ export default function VoiceCaptureModal({ onSave, onClose }: Props) {
       </div>
     </div>
   )
-}
-
-function joinForDisplay(transcript: string, interim: string): string {
-  return `${transcript} ${interim}`.trim()
 }

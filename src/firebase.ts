@@ -1,6 +1,6 @@
 import { initializeApp, type FirebaseApp } from 'firebase/app'
 import { getAuth, type Auth } from 'firebase/auth'
-import { getFirestore, type Firestore } from 'firebase/firestore'
+import { initializeFirestore, type Firestore } from 'firebase/firestore'
 
 const requiredVars = [
   'VITE_FIREBASE_API_KEY',
@@ -32,4 +32,10 @@ const firebaseConfig = {
 
 export const firebaseApp: FirebaseApp = initializeApp(firebaseConfig)
 export const auth: Auth = getAuth(firebaseApp)
-export const db: Firestore = getFirestore(firebaseApp)
+// Auto-detect long-polling so live sync works smoothly behind strict
+// proxies/firewalls (e.g. corporate/government networks), where the default
+// WebChannel/QUIC streaming transport otherwise floods the console with
+// transport-errored warnings and reconnect churn.
+export const db: Firestore = initializeFirestore(firebaseApp, {
+  experimentalAutoDetectLongPolling: true,
+})
