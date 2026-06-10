@@ -52,7 +52,7 @@ export default async function handler(req: ReqLike, res: ResLike) {
     return
   }
 
-  let body: { task?: string; text?: string; instruction?: string }
+  let body: { task?: string; text?: string; instruction?: string; prompt?: string }
   try {
     body = typeof req.body === 'string' ? JSON.parse(req.body) : ((req.body as typeof body) ?? {})
   } catch {
@@ -63,6 +63,9 @@ export default async function handler(req: ReqLike, res: ResLike) {
   const task = body.task
   const text = (body.text ?? '').trim()
   const instruction = (body.instruction ?? '').trim()
+  // Optional client-supplied system prompt (the user-editable thoughts prompt).
+  // Capped to a sane length; falls back to the built-in default per task.
+  const customPrompt = (body.prompt ?? '').trim()
 
   if (task !== 'tidy' && task !== 'extend') {
     res.status(400).json({ error: 'Unknown task.' })
@@ -91,7 +94,7 @@ export default async function handler(req: ReqLike, res: ResLike) {
       body: JSON.stringify({
         model: MODELS[task],
         max_tokens: MAX_TOKENS[task],
-        system: SYSTEM[task],
+        system: customPrompt && customPrompt.length <= 8000 ? customPrompt : SYSTEM[task],
         messages: [{ role: 'user', content: userText }],
       }),
     })

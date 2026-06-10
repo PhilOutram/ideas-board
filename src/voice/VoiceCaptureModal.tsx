@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { useVoiceCapture } from './useVoiceCapture'
 import { callAi } from '../ai/aiClient'
+import { DEFAULT_THOUGHTS_PROMPT, getThoughtsPrompt, setThoughtsPrompt } from '../ai/prompts'
 
 type Props = {
   // Save the captured note to the inbox (the page's messy space). The note is
@@ -26,6 +27,11 @@ export default function VoiceCaptureModal({ onSave, onClose }: Props) {
   const [thoughtsError, setThoughtsError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
 
+  // User-editable prompt for the "thoughts" generation (stored per-device).
+  const [thoughtsPrompt, setThoughtsPromptState] = useState(() => getThoughtsPrompt())
+  const [editingPrompt, setEditingPrompt] = useState(false)
+  const [promptDraft, setPromptDraft] = useState('')
+
   const startedRef = useRef(false)
   const recordedRef = useRef(false) // raw came from a recording (not typing)
   const autoTidiedRef = useRef(false)
@@ -36,7 +42,7 @@ export default function VoiceCaptureModal({ onSave, onClose }: Props) {
     setTidying(true)
     setTidyError(null)
     try {
-      setTidied(await callAi('tidy', text, instruction))
+      setTidied(await callAi('tidy', text, { instruction }))
     } catch (err) {
       setTidyError(err instanceof Error ? err.message : 'Could not tidy the text.')
     } finally {
@@ -50,7 +56,7 @@ export default function VoiceCaptureModal({ onSave, onClose }: Props) {
     setThinking(true)
     setThoughtsError(null)
     try {
-      setThoughts(await callAi('extend', base))
+      setThoughts(await callAi('extend', base, { prompt: thoughtsPrompt }))
       setIncludeThoughts(true)
     } catch (err) {
       setThoughtsError(err instanceof Error ? err.message : 'Could not get thoughts.')
@@ -107,6 +113,17 @@ export default function VoiceCaptureModal({ onSave, onClose }: Props) {
     autoTidiedRef.current = false
     reset()
     start()
+  }
+
+  function openPromptEditor() {
+    setPromptDraft(thoughtsPrompt)
+    setEditingPrompt(true)
+  }
+
+  function savePrompt() {
+    setThoughtsPrompt(promptDraft)
+    setThoughtsPromptState(getThoughtsPrompt())
+    setEditingPrompt(false)
   }
 
   function handleRefine(e: FormEvent<HTMLFormElement>) {
@@ -219,7 +236,54 @@ export default function VoiceCaptureModal({ onSave, onClose }: Props) {
               </section>
 
               <section className="studio-section">
-                <label className="studio-label">AI thoughts</label>
+                <div className="studio-section-head">
+                  <label className="studio-label">AI thoughts</label>
+                  <button
+                    type="button"
+                    className="cog-button"
+                    onClick={editingPrompt ? () => setEditingPrompt(false) : openPromptEditor}
+                    aria-label="Edit the AI thoughts prompt"
+                    aria-expanded={editingPrompt}
+                    title="Edit the prompt used for AI thoughts"
+                  >
+                    ⚙
+                  </button>
+                </div>
+
+                {editingPrompt && (
+                  <div className="prompt-editor">
+                    <p className="prompt-editor-hint muted">
+                      The instruction sent to the AI when generating thoughts. Saved on this device.
+                    </p>
+                    <textarea
+                      className="voice-textarea"
+                      value={promptDraft}
+                      onChange={(e) => setPromptDraft(e.target.value)}
+                      rows={7}
+                      aria-label="AI thoughts prompt"
+                    />
+                    <div className="prompt-editor-actions">
+                      <button type="button" className="ai-button" onClick={savePrompt}>
+                        Save prompt
+                      </button>
+                      <button
+                        type="button"
+                        className="link-button"
+                        onClick={() => setPromptDraft(DEFAULT_THOUGHTS_PROMPT)}
+                      >
+                        Reset to default
+                      </button>
+                      <button
+                        type="button"
+                        className="link-button"
+                        onClick={() => setEditingPrompt(false)}
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
+                )}
+
                 {thinking ? (
                   <p className="ai-status"><span className="spinner" aria-hidden="true" /> Thinking...</p>
                 ) : thoughts ? (

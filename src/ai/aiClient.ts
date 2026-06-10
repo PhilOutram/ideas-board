@@ -1,13 +1,18 @@
 export type AiTask = 'tidy' | 'extend'
 
+type AiOptions = {
+  instruction?: string // tidy: an extra tweak like "shorter" / "as bullets"
+  prompt?: string // extend: override the system prompt (user-editable)
+}
+
 // Calls our server function (api/ai.ts), which holds the Anthropic key.
 // Throws with a readable message on failure so the UI can show it and fall
 // back to the user's raw text.
-export async function callAi(task: AiTask, text: string, instruction?: string): Promise<string> {
+export async function callAi(task: AiTask, text: string, opts: AiOptions = {}): Promise<string> {
   const res = await fetch('/api/ai', {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({ task, text, instruction }),
+    body: JSON.stringify({ task, text, instruction: opts.instruction, prompt: opts.prompt }),
   })
 
   let data: { result?: string; error?: string } = {}

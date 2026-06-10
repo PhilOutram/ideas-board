@@ -1,4 +1,4 @@
-export const VERSION = 'v0.15'
+export const VERSION = 'v0.16'
 
 export type ChangelogEntry = {
   version: string
@@ -9,6 +9,13 @@ export type ChangelogEntry = {
 // Newest first. Bump VERSION and add an entry here on every commit so
 // the deployed build always shows exactly what shipped.
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: 'v0.16',
+    date: '2026-06-09',
+    notes: [
+      'Customise the AI thoughts prompt: in a voice capture, click the cog next to "AI thoughts" to edit the instruction sent to the AI, then Save (or Reset to default). Stored on your device.',
+    ],
+  },
   {
     version: 'v0.15',
     date: '2026-06-09',
