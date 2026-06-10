@@ -59,6 +59,8 @@ export default function PageView({ page, pages, updatePage, onSelectPage }: Prop
         />
       </header>
 
+      {page.body && <pre className="page-body">{page.body}</pre>}
+
       <Inbox page={page} updatePage={updatePage} createIdea={createIdea} />
 
       <IdeasList

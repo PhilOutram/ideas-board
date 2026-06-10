@@ -7,9 +7,10 @@ type Props = {
   selectedId: string | null
   onSelect: (id: string) => void
   onCreate: (title: string, parentId?: string | null) => Promise<string>
+  onOpenImport: () => void
 }
 
-export default function PagesSidebar({ pages, selectedId, onSelect, onCreate }: Props) {
+export default function PagesSidebar({ pages, selectedId, onSelect, onCreate, onOpenImport }: Props) {
   const [draft, setDraft] = useState('')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -82,6 +83,10 @@ export default function PagesSidebar({ pages, selectedId, onSelect, onCreate }: 
       </form>
 
       {error && <p className="page-create-error" role="alert">{error}</p>}
+
+      <button type="button" className="import-trigger" onClick={onOpenImport}>
+        ⬇ Import Markdown
+      </button>
 
       <nav className="pages-list" aria-label="Pages">
         {tree.length === 0 ? (

@@ -1,4 +1,4 @@
-export const VERSION = 'v0.20'
+export const VERSION = 'v0.21'
 
 export type ChangelogEntry = {
   version: string
@@ -9,6 +9,15 @@ export type ChangelogEntry = {
 // Newest first. Bump VERSION and add an entry here on every commit so
 // the deployed build always shows exactly what shipped.
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: 'v0.21',
+    date: '2026-06-11',
+    notes: [
+      'Import Markdown: paste a Markdown document (e.g. your design book exported from Word) and it builds the whole nested section tree - each #/##/### heading becomes a page, the text under it becomes that page\'s content. Live preview shows the tree before you import.',
+      'Import under the current page, or as new top-level pages.',
+      'Imported section content shows on the page (plain text for now; rich rendering + editing comes next).',
+    ],
+  },
   {
     version: 'v0.20',
     date: '2026-06-11',

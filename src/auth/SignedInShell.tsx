@@ -4,6 +4,7 @@ import { auth } from '../firebase'
 import AppTitle from '../components/AppTitle'
 import PagesSidebar from '../pages/PagesSidebar'
 import PageView from '../pages/PageView'
+import ImportModal from '../pages/ImportModal'
 import { usePages } from '../pages/usePages'
 import { SettingsProvider } from '../settings/SettingsContext'
 
@@ -14,6 +15,7 @@ type Props = {
 export default function SignedInShell({ user }: Props) {
   const { pages, loading, error, createPage, updatePage } = usePages(user.uid)
   const [selectedId, setSelectedId] = useState<string | null>(null)
+  const [importOpen, setImportOpen] = useState(false)
 
   // If nothing is selected (first load, or selected page was deleted),
   // fall back to the most recent page so the user always sees content.
@@ -51,6 +53,7 @@ export default function SignedInShell({ user }: Props) {
           selectedId={selectedId}
           onSelect={setSelectedId}
           onCreate={createPage}
+          onOpenImport={() => setImportOpen(true)}
         />
 
         <main className="app-main">
@@ -72,6 +75,16 @@ export default function SignedInShell({ user }: Props) {
           )}
         </main>
       </div>
+
+      {importOpen && (
+        <ImportModal
+          createPage={createPage}
+          defaultParentId={selectedId}
+          defaultParentTitle={selectedPage?.title ?? null}
+          onClose={() => setImportOpen(false)}
+          onImported={setSelectedId}
+        />
+      )}
     </div>
     </SettingsProvider>
   )
