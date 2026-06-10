@@ -61,7 +61,12 @@ export default function SignedInShell({ user }: Props) {
           ) : loading ? (
             <p className="muted">Loading pages...</p>
           ) : selectedPage ? (
-            <PageView page={selectedPage} updatePage={updatePage} />
+            <PageView
+              page={selectedPage}
+              pages={pages}
+              updatePage={updatePage}
+              onSelectPage={setSelectedId}
+            />
           ) : (
             <EmptyState />
           )}

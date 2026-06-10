@@ -3,17 +3,20 @@ import Inbox from '../inbox/Inbox'
 import IdeasList from '../ideas/IdeasList'
 import IdeaModal from '../ideas/IdeaModal'
 import { useIdeas } from '../ideas/useIdeas'
-import { inheritedMemory } from '../ideas/inheritance'
+import { inheritedMemory, inheritedMemoryForPage } from '../ideas/inheritance'
 import { buildPageExport } from '../ideas/exportForChat'
+import { ancestorsOf } from './pageTree'
 import CopyButton from '../components/CopyButton'
 import type { Page, PagePatch } from './usePages'
 
 type Props = {
   page: Page
+  pages: Page[]
   updatePage: (id: string, patch: PagePatch) => Promise<void>
+  onSelectPage: (id: string) => void
 }
 
-export default function PageView({ page, updatePage }: Props) {
+export default function PageView({ page, pages, updatePage, onSelectPage }: Props) {
   const {
     ideas,
     loading,
@@ -27,12 +30,25 @@ export default function PageView({ page, updatePage }: Props) {
   } = useIdeas(page.id)
   const [openIdeaId, setOpenIdeaId] = useState<string | null>(null)
 
-  // Resolve against the live list so the modal reflects real-time edits and
-  // closes itself if the idea disappears (deleted here or on another device).
   const openIdea = ideas.find((i) => i.id === openIdeaId) ?? null
+  const ancestors = ancestorsOf(page.id, pages)
+  const pageInherited = inheritedMemoryForPage(page, pages)
 
   return (
     <section className="page-view">
+      {ancestors.length > 0 && (
+        <nav className="breadcrumb" aria-label="Section path">
+          {ancestors.map((a) => (
+            <span key={a.id}>
+              <button type="button" className="breadcrumb-link" onClick={() => onSelectPage(a.id)}>
+                {a.title || '(untitled)'}
+              </button>
+              <span className="breadcrumb-sep" aria-hidden="true"> › </span>
+            </span>
+          ))}
+        </nav>
+      )}
+
       <header className="page-view-header">
         <h2 className="page-view-title">{page.title || '(untitled)'}</h2>
         <CopyButton
@@ -53,6 +69,19 @@ export default function PageView({ page, updatePage }: Props) {
         onOpen={setOpenIdeaId}
       />
 
+      {pageInherited.length > 0 && (
+        <section className="inherited-memory page-inherited">
+          <h3 className="board-label inherited-label">Inherited memory</h3>
+          {pageInherited.map((source) => (
+            <div key={source.label} className="inherited-source">
+              <p className="inherited-source-label">{source.label}</p>
+              <pre className="inherited-text">{source.memory}</pre>
+            </div>
+          ))}
+          <p className="inherited-note muted">This page's own memory below takes precedence.</p>
+        </section>
+      )}
+
       <div className="page-fields">
         <PageField label="Memory" value={page.memory} />
         <PageField label="Context" value={page.context} />
@@ -62,7 +91,7 @@ export default function PageView({ page, updatePage }: Props) {
         <IdeaModal
           idea={openIdea}
           page={page}
-          inherited={inheritedMemory(page)}
+          inherited={inheritedMemory(page, pages)}
           onUpdateTitle={(title) => updateIdea(openIdea.id, { title })}
           onUpdateBoard={(key, value) => updateBoard(openIdea.id, key, value)}
           onAddBoard={(key) => addBoard(openIdea.id, key)}

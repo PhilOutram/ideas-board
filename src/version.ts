@@ -1,4 +1,4 @@
-export const VERSION = 'v0.18'
+export const VERSION = 'v0.19'
 
 export type ChangelogEntry = {
   version: string
@@ -9,6 +9,14 @@ export type ChangelogEntry = {
 // Newest first. Bump VERSION and add an entry here on every commit so
 // the deployed build always shows exactly what shipped.
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: 'v0.19',
+    date: '2026-06-10',
+    notes: [
+      'Pages can now nest into a wiki-style tree: add sub-sections under any page (the "+" by each page), expand/collapse branches, and see the path to the current page as a breadcrumb. The first step toward a full design-book.',
+      'Memory now cascades down the whole tree: an idea (or page) inherits memory from every ancestor section above it, nearest taking precedence.',
+    ],
+  },
   {
     version: 'v0.18',
     date: '2026-06-10',

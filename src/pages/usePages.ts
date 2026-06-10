@@ -17,19 +17,20 @@ export type Page = {
   id: string
   title: string
   order: number
+  parentId: string | null // null = top-level (a "book" root); enables nesting
   context: string
   memory: string
   owner: string
   created: Timestamp | null
 }
 
-export type PagePatch = Partial<Pick<Page, 'title' | 'context' | 'memory' | 'order'>>
+export type PagePatch = Partial<Pick<Page, 'title' | 'context' | 'memory' | 'order' | 'parentId'>>
 
 type UsePagesResult = {
   pages: Page[]
   loading: boolean
   error: Error | null
-  createPage: (title: string) => Promise<string>
+  createPage: (title: string, parentId?: string | null) => Promise<string>
   updatePage: (id: string, patch: PagePatch) => Promise<void>
 }
 
@@ -54,6 +55,7 @@ export function usePages(userId: string): UsePagesResult {
             id: doc.id,
             title: (data.title as string | undefined) ?? '',
             order: (data.order as number | undefined) ?? 0,
+            parentId: (data.parentId as string | null | undefined) ?? null,
             context: (data.context as string | undefined) ?? '',
             memory: (data.memory as string | undefined) ?? '',
             owner: (data.owner as string | undefined) ?? '',
@@ -72,12 +74,13 @@ export function usePages(userId: string): UsePagesResult {
     return unsubscribe
   }, [userId])
 
-  async function createPage(title: string): Promise<string> {
+  async function createPage(title: string, parentId: string | null = null): Promise<string> {
     const trimmed = title.trim()
     if (!trimmed) throw new Error('Title cannot be empty.')
     const ref = await addDoc(collection(db, 'pages'), {
       title: trimmed,
       order: Date.now(),
+      parentId,
       context: '',
       memory: '',
       owner: userId,

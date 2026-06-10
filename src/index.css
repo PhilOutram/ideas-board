@@ -438,45 +438,169 @@ h1 {
   overflow-y: auto;
 }
 
-.pages-list ul {
+.page-tree {
   list-style: none;
   margin: 0;
   padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 0.15rem;
 }
 
 .pages-empty {
   margin: 0.5rem 0.25rem;
 }
 
-.page-item {
-  display: block;
-  width: 100%;
-  text-align: left;
-  font: inherit;
-  font-size: 0.95rem;
-  padding: 0.45rem 0.6rem;
-  background: none;
-  border: none;
+.page-row {
+  display: flex;
+  align-items: center;
+  gap: 0.1rem;
   border-radius: 6px;
-  color: var(--text);
-  cursor: pointer;
+  padding-right: 0.2rem;
 }
 
-.page-item:hover {
+.page-row:hover {
   background: var(--bg);
 }
 
-.page-item-active {
+.page-row-active,
+.page-row-active:hover {
   background: var(--accent-soft);
+}
+
+.page-caret {
+  flex-shrink: 0;
+  width: 1.2rem;
+  font: inherit;
+  font-size: 0.7rem;
+  line-height: 1;
+  color: var(--text-muted);
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0.4rem 0;
+  text-align: center;
+}
+
+.page-caret-empty {
+  cursor: default;
+}
+
+.page-item {
+  flex: 1;
+  min-width: 0;
+  text-align: left;
+  font: inherit;
+  font-size: 0.95rem;
+  padding: 0.4rem 0.3rem;
+  background: none;
+  border: none;
+  color: var(--text);
+  cursor: pointer;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.page-row-active .page-item {
   color: var(--accent);
   font-weight: 500;
 }
 
-.page-item-active:hover {
+.page-add-child {
+  flex-shrink: 0;
+  font: inherit;
+  font-size: 1rem;
+  line-height: 1;
+  color: var(--text-muted);
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0.2rem 0.35rem;
+  border-radius: 6px;
+  opacity: 0.45;
+}
+
+.page-row:hover .page-add-child,
+.page-add-child:focus {
+  opacity: 1;
+}
+
+.page-add-child:hover {
+  color: var(--accent);
   background: var(--accent-soft);
+}
+
+.page-add-form {
+  display: flex;
+  gap: 0.3rem;
+  margin: 0.15rem 0;
+  padding-right: 0.2rem;
+}
+
+.page-add-form input {
+  flex: 1;
+  min-width: 0;
+  font: inherit;
+  font-size: 0.9rem;
+  padding: 0.35rem 0.5rem;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  outline: none;
+}
+
+.page-add-form input:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+
+.page-add-form button {
+  flex-shrink: 0;
+  font: inherit;
+  font-size: 1rem;
+  line-height: 1;
+  width: 1.8rem;
+  background: var(--accent);
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.page-add-form button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* Section breadcrumb (ancestor path) */
+.breadcrumb {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  margin-bottom: 0.5rem;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+.breadcrumb-link {
+  font: inherit;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0.1rem 0.2rem;
+  border-radius: 4px;
+}
+
+.breadcrumb-link:hover {
+  color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.breadcrumb-sep {
+  color: var(--border);
+}
+
+.page-inherited {
+  margin: 1rem 0;
 }
 
 /* Page view */
