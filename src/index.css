@@ -599,8 +599,28 @@ h1 {
   color: var(--border);
 }
 
-.page-inherited {
-  margin: 1rem 0;
+/* Inherited memory on a page: tucked at the bottom, collapsed by default */
+.inherited-collapsible {
+  margin-top: 1.5rem;
+}
+
+.inherited-collapsible > summary {
+  cursor: pointer;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  padding: 0.3rem 0;
+}
+
+.inherited-collapsible > summary:hover {
+  color: var(--accent);
+}
+
+.inherited-collapsible-body {
+  margin-top: 0.5rem;
+  padding: 0.6rem 0.75rem;
+  background: var(--bg);
+  border: 1px dashed var(--border);
+  border-radius: 8px;
 }
 
 /* Page view */

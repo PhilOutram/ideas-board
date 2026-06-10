@@ -69,23 +69,25 @@ export default function PageView({ page, pages, updatePage, onSelectPage }: Prop
         onOpen={setOpenIdeaId}
       />
 
-      {pageInherited.length > 0 && (
-        <section className="inherited-memory page-inherited">
-          <h3 className="board-label inherited-label">Inherited memory</h3>
-          {pageInherited.map((source) => (
-            <div key={source.label} className="inherited-source">
-              <p className="inherited-source-label">{source.label}</p>
-              <pre className="inherited-text">{source.memory}</pre>
-            </div>
-          ))}
-          <p className="inherited-note muted">This page's own memory below takes precedence.</p>
-        </section>
-      )}
-
       <div className="page-fields">
         <PageField label="Memory" value={page.memory} />
         <PageField label="Context" value={page.context} />
       </div>
+
+      {pageInherited.length > 0 && (
+        <details className="inherited-collapsible">
+          <summary>Inherited memory ({pageInherited.length})</summary>
+          <div className="inherited-collapsible-body">
+            {pageInherited.map((source) => (
+              <div key={source.label} className="inherited-source">
+                <p className="inherited-source-label">{source.label}</p>
+                <pre className="inherited-text">{source.memory}</pre>
+              </div>
+            ))}
+            <p className="inherited-note muted">This page's own memory (above) takes precedence.</p>
+          </div>
+        </details>
+      )}
 
       {openIdea && (
         <IdeaModal
