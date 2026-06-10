@@ -4,6 +4,8 @@ import IdeasList from '../ideas/IdeasList'
 import IdeaModal from '../ideas/IdeaModal'
 import { useIdeas } from '../ideas/useIdeas'
 import { inheritedMemory } from '../ideas/inheritance'
+import { buildPageExport } from '../ideas/exportForChat'
+import CopyButton from '../components/CopyButton'
 import type { Page, PagePatch } from './usePages'
 
 type Props = {
@@ -33,6 +35,12 @@ export default function PageView({ page, updatePage }: Props) {
     <section className="page-view">
       <header className="page-view-header">
         <h2 className="page-view-title">{page.title || '(untitled)'}</h2>
+        <CopyButton
+          className="copy-button"
+          label="Copy all ideas for Claude"
+          getText={() => buildPageExport(page, ideas)}
+          disabled={ideas.length === 0}
+        />
       </header>
 
       <Inbox page={page} updatePage={updatePage} createIdea={createIdea} />
@@ -53,6 +61,7 @@ export default function PageView({ page, updatePage }: Props) {
       {openIdea && (
         <IdeaModal
           idea={openIdea}
+          page={page}
           inherited={inheritedMemory(page)}
           onUpdateTitle={(title) => updateIdea(openIdea.id, { title })}
           onUpdateBoard={(key, value) => updateBoard(openIdea.id, key, value)}

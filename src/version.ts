@@ -1,4 +1,4 @@
-export const VERSION = 'v0.16'
+export const VERSION = 'v0.17'
 
 export type ChangelogEntry = {
   version: string
@@ -9,6 +9,14 @@ export type ChangelogEntry = {
 // Newest first. Bump VERSION and add an entry here on every commit so
 // the deployed build always shows exactly what shipped.
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: 'v0.17',
+    date: '2026-06-10',
+    notes: [
+      'Copy for Claude: export to your clipboard as clean markdown, ready to paste into a Claude chat. Includes a short preamble, the page Context, the page Memory (framed as protocols & reminders), then the idea(s) and their boards.',
+      'Two options: "Copy for Claude" inside an idea copies that single idea; "Copy all ideas for Claude" by the page title copies every idea on the page. Empty sections are skipped.',
+    ],
+  },
   {
     version: 'v0.16',
     date: '2026-06-09',

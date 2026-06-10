@@ -486,6 +486,36 @@ h1 {
 
 .page-view-header {
   margin-bottom: 1.25rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+/* Copy-to-Claude buttons (page header + idea modal footer) */
+.copy-button {
+  font: inherit;
+  font-size: 0.85rem;
+  padding: 0.42rem 0.8rem;
+  background: var(--surface);
+  color: var(--accent);
+  border: 1px solid var(--accent);
+  border-radius: 8px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 120ms ease;
+}
+
+.copy-button:hover:not(:disabled) {
+  background: var(--accent-soft);
+}
+
+.copy-button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  color: var(--text-muted);
+  border-color: var(--border);
 }
 
 .page-view-title {
@@ -1264,6 +1294,10 @@ h1 {
 }
 
 .idea-modal-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem;
   padding: 0.85rem 1.25rem;
   border-top: 1px solid var(--border);
 }

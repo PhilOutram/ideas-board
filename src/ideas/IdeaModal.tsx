@@ -2,9 +2,13 @@ import { Fragment, useEffect, useRef, useState, type FormEvent } from 'react'
 import type { Idea } from './useIdeas'
 import { boardKeyFromName } from './useIdeas'
 import type { MemorySource } from './inheritance'
+import { buildIdeaExport } from './exportForChat'
+import CopyButton from '../components/CopyButton'
+import type { Page } from '../pages/usePages'
 
 type Props = {
   idea: Idea
+  page: Page
   inherited: MemorySource[]
   onUpdateTitle: (title: string) => void
   onUpdateBoard: (key: string, value: string) => void
@@ -19,6 +23,7 @@ const DEFAULT_BOARDS = ['messy', 'tidy', 'context', 'memory'] as const
 
 export default function IdeaModal({
   idea,
+  page,
   inherited,
   onUpdateTitle,
   onUpdateBoard,
@@ -80,6 +85,11 @@ export default function IdeaModal({
         </div>
 
         <footer className="idea-modal-footer">
+          <CopyButton
+            className="copy-button"
+            label="Copy for Claude"
+            getText={() => buildIdeaExport(page, idea)}
+          />
           <DeleteIdeaButton onDelete={onDelete} onClose={onClose} />
         </footer>
       </div>
