@@ -4,7 +4,7 @@
 // (NOT prefixed with VITE_, so it never reaches the browser bundle).
 // See memory: feature_voice_capture / feedback_vite_secrets.
 
-type AiTask = 'tidy' | 'extend'
+type AiTask = 'tidy' | 'extend' | 'title'
 
 // Minimal shapes for Vercel's Node (req, res) - avoids a @vercel/node dep.
 type ReqLike = { method?: string; body?: unknown }
@@ -18,9 +18,10 @@ type ResLike = {
 const MODELS: Record<AiTask, string> = {
   tidy: 'claude-haiku-4-5',
   extend: 'claude-sonnet-4-6',
+  title: 'claude-haiku-4-5',
 }
 
-const MAX_TOKENS: Record<AiTask, number> = { tidy: 2048, extend: 1024 }
+const MAX_TOKENS: Record<AiTask, number> = { tidy: 2048, extend: 1024, title: 32 }
 
 const SYSTEM: Record<AiTask, string> = {
   tidy:
@@ -38,6 +39,10 @@ const SYSTEM: Record<AiTask, string> = {
     'develop the idea.\nWorth considering: 2-4 bullets on problems, risks, ' +
     'or open questions.\n\nBe specific and concise. Do not restate their ' +
     'idea. Use plain text with simple "-" bullets.',
+  title:
+    'Generate a very short, descriptive title for the following idea note: ' +
+    '3-6 words, under ~50 characters. Respond with ONLY the title - no ' +
+    'surrounding quotes, no trailing punctuation, no preamble.',
 }
 
 export default async function handler(req: ReqLike, res: ResLike) {
@@ -67,7 +72,7 @@ export default async function handler(req: ReqLike, res: ResLike) {
   // Capped to a sane length; falls back to the built-in default per task.
   const customPrompt = (body.prompt ?? '').trim()
 
-  if (task !== 'tidy' && task !== 'extend') {
+  if (task !== 'tidy' && task !== 'extend' && task !== 'title') {
     res.status(400).json({ error: 'Unknown task.' })
     return
   }

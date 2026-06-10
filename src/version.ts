@@ -1,4 +1,4 @@
-export const VERSION = 'v0.17'
+export const VERSION = 'v0.18'
 
 export type ChangelogEntry = {
   version: string
@@ -9,6 +9,16 @@ export type ChangelogEntry = {
 // Newest first. Bump VERSION and add an entry here on every commit so
 // the deployed build always shows exactly what shipped.
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: 'v0.18',
+    date: '2026-06-10',
+    notes: [
+      'Ideas now get a short AI-generated title (instead of using the whole note as the title). The full text lives in the Messy board.',
+      'Idea cards are now compact - a short title and a few lines of preview, ending in "..."; click to open the full idea.',
+      'Voice capture is faster to act on: after recording you get three direct buttons - Save as idea, Add to memory, Add to context - no inbox hop or menus.',
+      'Your custom "AI thoughts" prompt now syncs across your devices (saved to your account) instead of being stuck on one browser.',
+    ],
+  },
   {
     version: 'v0.17',
     date: '2026-06-10',

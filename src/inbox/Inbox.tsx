@@ -2,6 +2,7 @@ import { useRef, useState, type FormEvent } from 'react'
 import type { Page, PagePatch } from '../pages/usePages'
 import type { NewIdeaInput } from '../ideas/useIdeas'
 import VoiceCaptureModal from '../voice/VoiceCaptureModal'
+import { makeIdeaTitle } from '../ai/aiClient'
 import { useQuickIdeas, type QuickIdea } from './useQuickIdeas'
 
 type Props = {
@@ -31,20 +32,37 @@ export default function Inbox({ page, updatePage, createIdea }: Props) {
   }
 
   async function promote(item: QuickIdea) {
-    // Promote the quick idea into a formal idea (default boards, warm),
-    // seeding the messy board with the captured text, then clear it from
-    // the inbox so it lives in exactly one place.
-    await createIdea({ title: item.text, messy: item.text })
+    // Promote the quick idea into a formal idea (default boards, warm). The
+    // title is an AI-generated short summary; the full text seeds the messy
+    // board. Then clear it from the inbox so it lives in exactly one place.
+    const title = await makeIdeaTitle(item.text)
+    await createIdea({ title, messy: item.text })
     await deleteQuickIdea(item.id)
   }
 
   async function sendTo(field: 'memory' | 'context', item: QuickIdea) {
-    const existing = field === 'memory' ? page.memory : page.context
     const stamp = item.created ? formatArchiveDate(item.created.toDate()) : ''
-    const prefix = stamp ? `[${stamp}] ` : ''
-    const appended = existing ? `${existing}\n${prefix}${item.text}` : `${prefix}${item.text}`
-    await updatePage(page.id, { [field]: appended })
+    await appendToField(field, item.text, stamp)
     await deleteQuickIdea(item.id)
+  }
+
+  // Append a snippet to the page's memory/context board with a date stamp.
+  // Shared by the inbox "send to" actions and the voice capture buttons.
+  async function appendToField(field: 'memory' | 'context', text: string, stamp?: string) {
+    const trimmed = text.trim()
+    if (!trimmed) return
+    const date = stamp ?? formatArchiveDate(new Date())
+    const existing = field === 'memory' ? page.memory : page.context
+    const line = `[${date}] ${trimmed}`
+    await updatePage(page.id, { [field]: existing ? `${existing}\n${line}` : line })
+  }
+
+  // Voice capture -> straight to a formal idea (with an AI short title).
+  async function saveVoiceAsIdea(text: string) {
+    const trimmed = text.trim()
+    if (!trimmed) return
+    const title = await makeIdeaTitle(trimmed)
+    await createIdea({ title, messy: trimmed })
   }
 
   return (
@@ -73,7 +91,9 @@ export default function Inbox({ page, updatePage, createIdea }: Props) {
 
       {voiceOpen && (
         <VoiceCaptureModal
-          onSave={(text) => addQuickIdea(text)}
+          onSaveIdea={saveVoiceAsIdea}
+          onAddToMemory={(text) => appendToField('memory', text)}
+          onAddToContext={(text) => appendToField('context', text)}
           onClose={() => setVoiceOpen(false)}
         />
       )}

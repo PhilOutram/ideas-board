@@ -5,6 +5,7 @@ import AppTitle from '../components/AppTitle'
 import PagesSidebar from '../pages/PagesSidebar'
 import PageView from '../pages/PageView'
 import { usePages } from '../pages/usePages'
+import { SettingsProvider } from '../settings/SettingsContext'
 
 type Props = {
   user: User
@@ -32,6 +33,7 @@ export default function SignedInShell({ user }: Props) {
   }
 
   return (
+    <SettingsProvider userId={user.uid}>
     <div className="app-shell">
       <header className="app-header">
         <AppTitle />
@@ -66,6 +68,7 @@ export default function SignedInShell({ user }: Props) {
         </main>
       </div>
     </div>
+    </SettingsProvider>
   )
 }
 

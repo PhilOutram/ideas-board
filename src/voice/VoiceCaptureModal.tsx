@@ -1,18 +1,28 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { useVoiceCapture } from './useVoiceCapture'
 import { callAi } from '../ai/aiClient'
-import { DEFAULT_THOUGHTS_PROMPT, getThoughtsPrompt, setThoughtsPrompt } from '../ai/prompts'
+import { DEFAULT_THOUGHTS_PROMPT } from '../ai/prompts'
+import { useSettings } from '../settings/SettingsContext'
+
+type SaveAction = (text: string) => Promise<void> | void
 
 type Props = {
-  // Save the captured note to the inbox (the page's messy space). The note is
-  // the AI-tidied text by default (the raw dictation is discarded unless the
-  // user opts to keep it), optionally with an AI "thoughts" section appended.
-  onSave: (text: string) => Promise<void> | void
+  // The captured note (AI-tidied by default, optionally with a thoughts
+  // section) is routed straight to one of three destinations - no inbox hop.
+  onSaveIdea: SaveAction
+  onAddToMemory: SaveAction
+  onAddToContext: SaveAction
   onClose: () => void
 }
 
-export default function VoiceCaptureModal({ onSave, onClose }: Props) {
+export default function VoiceCaptureModal({
+  onSaveIdea,
+  onAddToMemory,
+  onAddToContext,
+  onClose,
+}: Props) {
   const { supported, listening, transcript, interim, error, start, stop, reset } = useVoiceCapture()
+  const { thoughtsPrompt, setThoughtsPrompt } = useSettings()
 
   const [raw, setRaw] = useState('')
   const [tidied, setTidied] = useState('')
@@ -27,13 +37,11 @@ export default function VoiceCaptureModal({ onSave, onClose }: Props) {
   const [thoughtsError, setThoughtsError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
 
-  // User-editable prompt for the "thoughts" generation (stored per-device).
-  const [thoughtsPrompt, setThoughtsPromptState] = useState(() => getThoughtsPrompt())
   const [editingPrompt, setEditingPrompt] = useState(false)
   const [promptDraft, setPromptDraft] = useState('')
 
   const startedRef = useRef(false)
-  const recordedRef = useRef(false) // raw came from a recording (not typing)
+  const recordedRef = useRef(false)
   const autoTidiedRef = useRef(false)
 
   async function runTidy(source: string, instruction?: string) {
@@ -65,7 +73,6 @@ export default function VoiceCaptureModal({ onSave, onClose }: Props) {
     }
   }
 
-  // Auto-start recording on open - the mic tap was the gesture.
   useEffect(() => {
     if (supported && !startedRef.current) {
       startedRef.current = true
@@ -74,7 +81,6 @@ export default function VoiceCaptureModal({ onSave, onClose }: Props) {
     }
   }, [supported, start, reset])
 
-  // Once recording stops, move the captured text into the editable raw box.
   useEffect(() => {
     if (!listening && transcript && !raw) {
       recordedRef.current = true
@@ -82,13 +88,11 @@ export default function VoiceCaptureModal({ onSave, onClose }: Props) {
     }
   }, [listening, transcript, raw])
 
-  // Auto-tidy a fresh dictation once (typed text is tidied manually instead).
   useEffect(() => {
     if (raw && recordedRef.current && !autoTidiedRef.current) {
       autoTidiedRef.current = true
       void runTidy(raw)
     }
-    // runTidy is intentionally omitted - this should fire once per recording.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [raw])
 
@@ -120,9 +124,8 @@ export default function VoiceCaptureModal({ onSave, onClose }: Props) {
     setEditingPrompt(true)
   }
 
-  function savePrompt() {
-    setThoughtsPrompt(promptDraft)
-    setThoughtsPromptState(getThoughtsPrompt())
+  async function savePrompt() {
+    await setThoughtsPrompt(promptDraft)
     setEditingPrompt(false)
   }
 
@@ -134,20 +137,26 @@ export default function VoiceCaptureModal({ onSave, onClose }: Props) {
     setRefine('')
   }
 
-  async function handleSave() {
+  // The note that gets saved: the tidied text (or raw), plus the thoughts
+  // section if kept, plus the original if the user opted to keep it.
+  function buildNote(): string {
     const primary = (tidied.trim() || raw.trim())
-    if (!primary) return
+    if (!primary) return ''
     const parts = [primary]
     if (includeThoughts && thoughts.trim()) parts.push(`AI thoughts:\n${thoughts.trim()}`)
-    if (keepOriginal && raw.trim() && raw.trim() !== primary) {
-      parts.push(`Original:\n${raw.trim()}`)
-    }
+    if (keepOriginal && raw.trim() && raw.trim() !== primary) parts.push(`Original:\n${raw.trim()}`)
+    return parts.join('\n\n')
+  }
+
+  async function doAction(action: SaveAction) {
+    const note = buildNote()
+    if (!note) return
     setSaving(true)
     try {
-      await onSave(parts.join('\n\n'))
+      await action(note)
       onClose()
     } catch (err) {
-      console.error('Failed to save capture:', err)
+      console.error('Save action failed:', err)
       setSaving(false)
     }
   }
@@ -253,7 +262,7 @@ export default function VoiceCaptureModal({ onSave, onClose }: Props) {
                 {editingPrompt && (
                   <div className="prompt-editor">
                     <p className="prompt-editor-hint muted">
-                      The instruction sent to the AI when generating thoughts. Saved on this device.
+                      The instruction sent to the AI when generating thoughts. Saved to your account.
                     </p>
                     <textarea
                       className="voice-textarea"
@@ -330,32 +339,55 @@ export default function VoiceCaptureModal({ onSave, onClose }: Props) {
           )}
         </div>
 
-        <footer className="voice-actions">
-          {listening ? (
+        {listening ? (
+          <footer className="voice-actions">
             <button type="button" className="voice-stop" onClick={stop}>
               ◼ Stop
             </button>
-          ) : (
-            <>
+            <button type="button" className="link-button" onClick={onClose}>
+              Cancel
+            </button>
+          </footer>
+        ) : (
+          <footer className="voice-actions voice-actions-review">
+            <div className="voice-save-actions">
+              <button
+                type="button"
+                className="voice-action"
+                onClick={() => doAction(onSaveIdea)}
+                disabled={!canSave || saving}
+              >
+                💡 Save as idea
+              </button>
+              <button
+                type="button"
+                className="voice-action"
+                onClick={() => doAction(onAddToMemory)}
+                disabled={!canSave || saving}
+              >
+                🧠 Add to memory
+              </button>
+              <button
+                type="button"
+                className="voice-action"
+                onClick={() => doAction(onAddToContext)}
+                disabled={!canSave || saving}
+              >
+                📝 Add to context
+              </button>
+            </div>
+            <div className="voice-actions-secondary">
               {supported && (
                 <button type="button" className="voice-record" onClick={recordAgain}>
                   ● {raw ? 'Record again' : 'Record'}
                 </button>
               )}
-              <button
-                type="button"
-                className="voice-save"
-                onClick={handleSave}
-                disabled={!canSave || saving}
-              >
-                {saving ? 'Saving...' : 'Save to inbox'}
+              <button type="button" className="link-button" onClick={onClose}>
+                Cancel
               </button>
-            </>
-          )}
-          <button type="button" className="link-button" onClick={onClose}>
-            Cancel
-          </button>
-        </footer>
+            </div>
+          </footer>
+        )}
       </div>
     </div>
   )
