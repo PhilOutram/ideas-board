@@ -1,4 +1,4 @@
-export const VERSION = 'v0.23'
+export const VERSION = 'v0.24'
 
 export type ChangelogEntry = {
   version: string
@@ -9,6 +9,14 @@ export type ChangelogEntry = {
 // Newest first. Bump VERSION and add an entry here on every commit so
 // the deployed build always shows exactly what shipped.
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: 'v0.24',
+    date: '2026-06-11',
+    notes: [
+      'Import Markdown: you can now choose a .md file directly instead of pasting. This reads the raw file, avoiding the trap where copying from a Markdown *preview* strips the #/-/| characters and flattens everything into one page.',
+      'Delete a page: a "Delete page" button (with a confirm) now lives in the page header. Pages with sub-sections are protected until you remove the sub-sections first, so a whole branch is never silently orphaned.',
+    ],
+  },
   {
     version: 'v0.23',
     date: '2026-06-11',

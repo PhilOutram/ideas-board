@@ -13,7 +13,7 @@ type Props = {
 }
 
 export default function SignedInShell({ user }: Props) {
-  const { pages, loading, error, createPage, updatePage } = usePages(user.uid)
+  const { pages, loading, error, createPage, updatePage, deletePage } = usePages(user.uid)
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [importOpen, setImportOpen] = useState(false)
 
@@ -68,6 +68,7 @@ export default function SignedInShell({ user }: Props) {
               page={selectedPage}
               pages={pages}
               updatePage={updatePage}
+              deletePage={deletePage}
               onSelectPage={setSelectedId}
             />
           ) : (

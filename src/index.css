@@ -869,6 +869,79 @@ h1 {
   flex-wrap: wrap;
 }
 
+.page-view-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+}
+
+/* Delete-page control in the page header (mirrors the delete-idea pattern). */
+.delete-page {
+  font: inherit;
+  font-size: 0.85rem;
+  background: none;
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 0.42rem 0.7rem;
+  border-radius: 8px;
+  white-space: nowrap;
+}
+
+.delete-page:hover:not(:disabled) {
+  color: var(--danger);
+  border-color: var(--danger);
+  background: var(--danger-bg);
+}
+
+.delete-page:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.delete-page-confirm {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.delete-page-yes {
+  color: var(--danger);
+  border-color: var(--danger);
+  font-weight: 500;
+}
+
+/* Import: choose-a-file row (raw file read avoids copy-rendered-markdown bugs) */
+.import-file-row {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin-bottom: 0.6rem;
+  flex-wrap: wrap;
+}
+
+.import-file-button {
+  font: inherit;
+  font-size: 0.85rem;
+  padding: 0.42rem 0.8rem;
+  background: var(--surface);
+  color: var(--accent);
+  border: 1px solid var(--accent);
+  border-radius: 8px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.import-file-button:hover {
+  background: var(--accent-soft);
+}
+
+.import-file-name {
+  font-size: 0.85rem;
+  word-break: break-all;
+}
+
 /* Copy-to-Claude buttons (page header + idea modal footer) */
 .copy-button {
   font: inherit;

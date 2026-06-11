@@ -15,10 +15,11 @@ type Props = {
   page: Page
   pages: Page[]
   updatePage: (id: string, patch: PagePatch) => Promise<void>
+  deletePage: (id: string) => Promise<void>
   onSelectPage: (id: string) => void
 }
 
-export default function PageView({ page, pages, updatePage, onSelectPage }: Props) {
+export default function PageView({ page, pages, updatePage, deletePage, onSelectPage }: Props) {
   const {
     ideas,
     loading,
@@ -35,6 +36,7 @@ export default function PageView({ page, pages, updatePage, onSelectPage }: Prop
   const openIdea = ideas.find((i) => i.id === openIdeaId) ?? null
   const ancestors = ancestorsOf(page.id, pages)
   const pageInherited = inheritedMemoryForPage(page, pages)
+  const childCount = pages.filter((p) => p.parentId === page.id).length
 
   return (
     <section className="page-view">
@@ -53,12 +55,18 @@ export default function PageView({ page, pages, updatePage, onSelectPage }: Prop
 
       <header className="page-view-header">
         <h2 className="page-view-title">{page.title || '(untitled)'}</h2>
-        <CopyButton
-          className="copy-button"
-          label="Copy all ideas for Claude"
-          getText={() => buildPageExport(page, ideas)}
-          disabled={ideas.length === 0}
-        />
+        <div className="page-view-actions">
+          <CopyButton
+            className="copy-button"
+            label="Copy all ideas for Claude"
+            getText={() => buildPageExport(page, ideas)}
+            disabled={ideas.length === 0}
+          />
+          <DeletePageButton
+            childCount={childCount}
+            onDelete={() => deletePage(page.id)}
+          />
+        </div>
       </header>
 
       <SectionBody
@@ -110,6 +118,67 @@ export default function PageView({ page, pages, updatePage, onSelectPage }: Prop
         />
       )}
     </section>
+  )
+}
+
+// Delete a page, behind a confirm step. Blocked while the page still has
+// sub-sections so we never silently orphan a whole branch - the user removes
+// (or, once re-parenting lands, moves) the children first.
+function DeletePageButton({
+  childCount,
+  onDelete,
+}: {
+  childCount: number
+  onDelete: () => Promise<void>
+}) {
+  const [confirming, setConfirming] = useState(false)
+  const [busy, setBusy] = useState(false)
+
+  if (childCount > 0) {
+    return (
+      <button
+        type="button"
+        className="delete-page"
+        disabled
+        title={`Remove its ${childCount} sub-section${childCount === 1 ? '' : 's'} first`}
+      >
+        Delete page
+      </button>
+    )
+  }
+
+  if (!confirming) {
+    return (
+      <button type="button" className="delete-page" onClick={() => setConfirming(true)}>
+        Delete page
+      </button>
+    )
+  }
+
+  return (
+    <span className="delete-page-confirm">
+      <span className="muted">Delete this page?</span>
+      <button
+        type="button"
+        className="delete-page delete-page-yes"
+        disabled={busy}
+        onClick={async () => {
+          setBusy(true)
+          try {
+            await onDelete()
+          } catch (err) {
+            console.error('Failed to delete page:', err)
+            setBusy(false)
+            setConfirming(false)
+          }
+        }}
+      >
+        {busy ? 'Deleting...' : 'Delete'}
+      </button>
+      <button type="button" className="link-button" onClick={() => setConfirming(false)}>
+        Keep
+      </button>
+    </span>
   )
 }
 

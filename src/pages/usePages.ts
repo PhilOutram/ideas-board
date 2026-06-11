@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import {
   addDoc,
   collection,
+  deleteDoc,
   doc,
   onSnapshot,
   orderBy,
@@ -35,6 +36,7 @@ type UsePagesResult = {
   error: Error | null
   createPage: (title: string, parentId?: string | null, body?: string) => Promise<string>
   updatePage: (id: string, patch: PagePatch) => Promise<void>
+  deletePage: (id: string) => Promise<void>
 }
 
 export function usePages(userId: string): UsePagesResult {
@@ -102,5 +104,9 @@ export function usePages(userId: string): UsePagesResult {
     await updateDoc(doc(db, 'pages', id), patch)
   }
 
-  return { pages, loading, error, createPage, updatePage }
+  async function deletePage(id: string): Promise<void> {
+    await deleteDoc(doc(db, 'pages', id))
+  }
+
+  return { pages, loading, error, createPage, updatePage, deletePage }
 }

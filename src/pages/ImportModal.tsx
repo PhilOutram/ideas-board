@@ -21,6 +21,22 @@ export default function ImportModal({
   const [atRoot, setAtRoot] = useState(defaultParentId === null)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [fileName, setFileName] = useState<string | null>(null)
+
+  // Reading the file gives us the RAW markdown - no risk of copying rendered
+  // text (which strips #, -, | and breaks the parser). Most reliable path.
+  async function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    e.target.value = '' // allow re-picking the same file after an edit
+    if (!file) return
+    try {
+      setText(await file.text())
+      setFileName(file.name)
+      setError(null)
+    } catch {
+      setError('Could not read that file.')
+    }
+  }
 
   const tree = useMemo(() => parseMarkdownToTree(text), [text])
   const total = useMemo(() => countNodes(tree), [tree])
@@ -82,16 +98,32 @@ export default function ImportModal({
 
         <div className="modal-body">
           <p className="muted import-hint">
-            Paste Markdown. Each heading (#, ##, ###...) becomes a nested section; the text under
-            it becomes that section's body.
+            Choose a <code>.md</code> file or paste Markdown. Each heading (#, ##, ###...) becomes a
+            nested section; the text under it becomes that section's body.
           </p>
+
+          <div className="import-file-row">
+            <label className="import-file-button">
+              Choose .md file
+              <input
+                type="file"
+                accept=".md,.markdown,.txt,text/markdown,text/plain"
+                onChange={handleFile}
+                hidden
+              />
+            </label>
+            {fileName && <span className="muted import-file-name">{fileName}</span>}
+          </div>
+
           <textarea
             className="voice-textarea import-textarea"
             value={text}
-            onChange={(e) => setText(e.target.value)}
+            onChange={(e) => {
+              setText(e.target.value)
+              setFileName(null)
+            }}
             placeholder={'# Ember\n\n## Winning\nWhat feeling does the game elicit?\n\n## Resources\n...'}
             rows={8}
-            autoFocus
           />
 
           {defaultParentId !== null && (
