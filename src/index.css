@@ -111,6 +111,36 @@ h1 {
   font-size: 0.9rem;
 }
 
+/* Dismissible variant: error text plus a close button so it stops eating
+   card space once read (matters on a small phone screen). */
+.voice-error {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+}
+
+.voice-error > span {
+  flex: 1;
+  min-width: 0;
+}
+
+.voice-error-close {
+  flex-shrink: 0;
+  font: inherit;
+  font-size: 1.1rem;
+  line-height: 1;
+  background: none;
+  border: none;
+  color: inherit;
+  cursor: pointer;
+  padding: 0 0.15rem;
+  opacity: 0.8;
+}
+
+.voice-error-close:hover {
+  opacity: 1;
+}
+
 .auth-submit {
   font: inherit;
   font-size: 1rem;
@@ -1278,6 +1308,7 @@ h1 {
 }
 
 .idea-card {
+  position: relative;
   display: flex;
   align-items: flex-start;
   gap: 0.6rem;
@@ -1334,7 +1365,7 @@ h1 {
   color: inherit;
   background: none;
   border: none;
-  padding: 0;
+  padding: 0 0 1.1rem 0; /* room for the copy button in the bottom-right */
   margin: 0;
   cursor: pointer;
 }
@@ -1363,6 +1394,31 @@ h1 {
   -webkit-line-clamp: 4;
   -webkit-box-orient: vertical;
   overflow: hidden;
+}
+
+/* Quick "grab this card" copy button, tucked into the bottom-right corner so
+   a single idea can be dropped straight into a chat as markdown. */
+.idea-copy {
+  position: absolute;
+  bottom: 0.4rem;
+  right: 0.5rem;
+  font: inherit;
+  font-size: 0.72rem;
+  line-height: 1;
+  padding: 0.25rem 0.45rem;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--surface);
+  color: var(--text-muted);
+  cursor: pointer;
+  opacity: 0.75;
+  transition: opacity 120ms ease, color 120ms ease, border-color 120ms ease;
+}
+
+.idea-copy:hover {
+  opacity: 1;
+  color: var(--accent);
+  border-color: var(--accent);
 }
 
 .ideas-cold {

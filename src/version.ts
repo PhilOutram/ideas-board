@@ -1,4 +1,4 @@
-export const VERSION = 'v0.21'
+export const VERSION = 'v0.22'
 
 export type ChangelogEntry = {
   version: string
@@ -9,6 +9,17 @@ export type ChangelogEntry = {
 // Newest first. Bump VERSION and add an entry here on every commit so
 // the deployed build always shows exactly what shipped.
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: 'v0.22',
+    date: '2026-06-11',
+    notes: [
+      'Voice/AI error messages can now be dismissed with an "×" so they stop taking up space on the card - handy on a phone.',
+      'Every idea card now has a "Copy" button in its corner: one tap copies that idea to the clipboard as markdown (bold title), ready to paste into a chat.',
+      'Recording now keeps your phone screen awake, so the screen turning off no longer cuts the capture short.',
+      'After a voice capture you can now also send it straight to the Inbox (for short notes to deal with later), alongside Save as idea / memory / context.',
+      'The "AI thoughts" are now editable while recording - trim or delete the bits you do not want before saving.',
+    ],
+  },
   {
     version: 'v0.21',
     date: '2026-06-11',

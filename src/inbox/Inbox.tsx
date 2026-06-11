@@ -92,6 +92,7 @@ export default function Inbox({ page, updatePage, createIdea }: Props) {
       {voiceOpen && (
         <VoiceCaptureModal
           onSaveIdea={saveVoiceAsIdea}
+          onAddToInbox={(text) => addQuickIdea(text)}
           onAddToMemory={(text) => appendToField('memory', text)}
           onAddToContext={(text) => appendToField('context', text)}
           onClose={() => setVoiceOpen(false)}

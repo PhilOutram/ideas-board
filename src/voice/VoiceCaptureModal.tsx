@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { useVoiceCapture } from './useVoiceCapture'
+import { useWakeLock } from './useWakeLock'
 import { callAi } from '../ai/aiClient'
 import { DEFAULT_THOUGHTS_PROMPT } from '../ai/prompts'
 import { useSettings } from '../settings/SettingsContext'
@@ -8,8 +9,10 @@ type SaveAction = (text: string) => Promise<void> | void
 
 type Props = {
   // The captured note (AI-tidied by default, optionally with a thoughts
-  // section) is routed straight to one of three destinations - no inbox hop.
+  // section) is routed straight to one of four destinations - no inbox hop.
+  // The inbox is the lightweight home for short notes to deal with later.
   onSaveIdea: SaveAction
+  onAddToInbox: SaveAction
   onAddToMemory: SaveAction
   onAddToContext: SaveAction
   onClose: () => void
@@ -17,12 +20,17 @@ type Props = {
 
 export default function VoiceCaptureModal({
   onSaveIdea,
+  onAddToInbox,
   onAddToMemory,
   onAddToContext,
   onClose,
 }: Props) {
   const { supported, listening, transcript, interim, error, start, stop, reset } = useVoiceCapture()
   const { thoughtsPrompt, setThoughtsPrompt } = useSettings()
+
+  // Hold the screen on while actively recording so the phone doesn't sleep
+  // mid-capture (which would suspend the page and cut the mic).
+  useWakeLock(listening)
 
   const [raw, setRaw] = useState('')
   const [tidied, setTidied] = useState('')
@@ -39,6 +47,13 @@ export default function VoiceCaptureModal({
 
   const [editingPrompt, setEditingPrompt] = useState(false)
   const [promptDraft, setPromptDraft] = useState('')
+
+  // Let the user dismiss the error banner so it stops eating card space
+  // (important on mobile). Reset the dismissal whenever a new error arrives.
+  const [errorDismissed, setErrorDismissed] = useState(false)
+  useEffect(() => {
+    setErrorDismissed(false)
+  }, [error])
 
   const startedRef = useRef(false)
   const recordedRef = useRef(false)
@@ -180,7 +195,19 @@ export default function VoiceCaptureModal({
         </header>
 
         <div className="modal-body">
-          {error && <p className="auth-error" role="alert">{error}</p>}
+          {error && !errorDismissed && (
+            <div className="auth-error voice-error" role="alert">
+              <span>{error}</span>
+              <button
+                type="button"
+                className="voice-error-close"
+                onClick={() => setErrorDismissed(true)}
+                aria-label="Dismiss this message"
+              >
+                ×
+              </button>
+            </div>
+          )}
 
           {listening ? (
             <div className="voice-live" aria-live="polite">
@@ -297,7 +324,13 @@ export default function VoiceCaptureModal({
                   <p className="ai-status"><span className="spinner" aria-hidden="true" /> Thinking...</p>
                 ) : thoughts ? (
                   <>
-                    <div className="ai-thoughts-text">{thoughts}</div>
+                    <textarea
+                      className="voice-textarea"
+                      value={thoughts}
+                      onChange={(e) => setThoughts(e.target.value)}
+                      rows={6}
+                      aria-label="AI thoughts - edit or delete chunks as you like"
+                    />
                     <label className="studio-check">
                       <input
                         type="checkbox"
@@ -358,6 +391,14 @@ export default function VoiceCaptureModal({
                 disabled={!canSave || saving}
               >
                 💡 Save as idea
+              </button>
+              <button
+                type="button"
+                className="voice-action"
+                onClick={() => doAction(onAddToInbox)}
+                disabled={!canSave || saving}
+              >
+                📥 Add to inbox
               </button>
               <button
                 type="button"

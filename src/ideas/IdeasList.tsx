@@ -1,5 +1,7 @@
 import { useState } from 'react'
 import type { Idea, Temperature } from './useIdeas'
+import { buildIdeaCard } from './exportForChat'
+import CopyButton from '../components/CopyButton'
 
 type Props = {
   ideas: Idea[]
@@ -145,6 +147,11 @@ function IdeaCard({ idea, setTemperature, onOpen }: CardProps) {
         <span className="idea-title">{idea.title || '(untitled idea)'}</span>
         {preview && <span className="idea-preview">{preview}</span>}
       </button>
+      <CopyButton
+        className="idea-copy"
+        label="⧉ Copy"
+        getText={() => buildIdeaCard(idea)}
+      />
     </li>
   )
 }

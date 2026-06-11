@@ -73,6 +73,18 @@ export function buildIdeaExport(page: Page, idea: Idea): string {
   return [...header(page, PREAMBLE_SINGLE), ideaMarkdown(idea, 2)].join('\n\n') + '\n'
 }
 
+// A lightweight copy of just one idea card - bold title then its non-empty
+// boards - for dropping a single idea straight into a chat. No page context,
+// preamble or memory: this is the "grab this card" shortcut on the card itself.
+export function buildIdeaCard(idea: Idea): string {
+  const parts = [`**${idea.title || '(untitled idea)'}**`]
+  for (const key of boardKeys(idea)) {
+    const value = (idea.boards[key] ?? '').trim()
+    if (value) parts.push(`**${labelForBoard(key)}**\n\n${value}`)
+  }
+  return parts.join('\n\n') + '\n'
+}
+
 const RANK: Record<Temperature, number> = { hot: 0, warm: 1, cold: 2 }
 
 export function buildPageExport(page: Page, ideas: Idea[]): string {
