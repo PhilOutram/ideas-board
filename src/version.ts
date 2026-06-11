@@ -1,4 +1,4 @@
-export const VERSION = 'v0.22'
+export const VERSION = 'v0.23'
 
 export type ChangelogEntry = {
   version: string
@@ -9,6 +9,15 @@ export type ChangelogEntry = {
 // Newest first. Bump VERSION and add an entry here on every commit so
 // the deployed build always shows exactly what shipped.
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: 'v0.23',
+    date: '2026-06-11',
+    notes: [
+      'Rich section content: each page now has a "Content" area that renders markdown properly - headings, bold, lists, and tables (great for the imported design book).',
+      'Edit a section in place: click "Edit" to write markdown in a textarea, "Done" to see it rendered. Changes auto-save as you type and sync across devices.',
+      'Imported sections that were plain text before are now shown as formatted markdown.',
+    ],
+  },
   {
     version: 'v0.22',
     date: '2026-06-11',

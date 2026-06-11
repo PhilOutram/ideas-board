@@ -7,6 +7,8 @@ import { inheritedMemory, inheritedMemoryForPage } from '../ideas/inheritance'
 import { buildPageExport } from '../ideas/exportForChat'
 import { ancestorsOf } from './pageTree'
 import CopyButton from '../components/CopyButton'
+import Markdown from '../components/Markdown'
+import { useDebouncedField } from '../lib/useDebouncedField'
 import type { Page, PagePatch } from './usePages'
 
 type Props = {
@@ -59,7 +61,11 @@ export default function PageView({ page, pages, updatePage, onSelectPage }: Prop
         />
       </header>
 
-      {page.body && <pre className="page-body">{page.body}</pre>}
+      <SectionBody
+        key={page.id}
+        value={page.body}
+        onSave={(body) => updatePage(page.id, { body })}
+      />
 
       <Inbox page={page} updatePage={updatePage} createIdea={createIdea} />
 
@@ -102,6 +108,49 @@ export default function PageView({ page, pages, updatePage, onSelectPage }: Prop
           onDelete={() => deleteIdea(openIdea.id)}
           onClose={() => setOpenIdeaId(null)}
         />
+      )}
+    </section>
+  )
+}
+
+// The section's main content: a markdown body, rendered when viewing and
+// edited as a plain textarea (markdown supported - tables, lists, headings).
+// Auto-saves like the idea boards; editing/viewing toggles with one button.
+function SectionBody({ value, onSave }: { value: string; onSave: (v: string) => void }) {
+  const [editing, setEditing] = useState(false)
+  const { draft, onChange, flush } = useDebouncedField(value, onSave)
+  const hasContent = draft.trim().length > 0
+
+  function toggle() {
+    if (editing) flush()
+    setEditing((v) => !v)
+  }
+
+  return (
+    <section className="section-body">
+      <div className="section-body-head">
+        <h3 className="page-field-label">Content</h3>
+        <button type="button" className="link-button" onClick={toggle}>
+          {editing ? 'Done' : hasContent ? 'Edit' : '+ Add content'}
+        </button>
+      </div>
+
+      {editing ? (
+        <textarea
+          className="section-body-textarea"
+          value={draft}
+          placeholder="Write this section in markdown - # headings, **bold**, tables, - lists..."
+          onChange={(e) => onChange(e.target.value)}
+          onBlur={flush}
+          rows={14}
+          autoFocus
+        />
+      ) : hasContent ? (
+        <Markdown source={draft} />
+      ) : (
+        <p className="muted section-body-empty">
+          No content yet. Click "+ Add content" to write this section (markdown supported).
+        </p>
       )}
     </section>
   )
