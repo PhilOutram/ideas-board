@@ -942,6 +942,39 @@ h1 {
   word-break: break-all;
 }
 
+/* Icon-only variants: compact, near-square. See feedback-icon-buttons. */
+.copy-button-icon,
+.delete-page-icon {
+  padding: 0.34rem 0.52rem;
+  font-size: 1rem;
+  line-height: 1;
+}
+
+.section-edit-toggle {
+  font: inherit;
+  font-size: 1rem;
+  line-height: 1;
+  background: none;
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+  border-radius: 6px;
+  padding: 0.25rem 0.45rem;
+  cursor: pointer;
+}
+
+.section-edit-toggle:hover {
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
+.delete-idea-icon {
+  font-size: 1rem;
+  line-height: 1;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 0.3rem 0.5rem;
+}
+
 /* Copy-to-Claude buttons (page header + idea modal footer) */
 .copy-button {
   font: inherit;
@@ -1615,9 +1648,9 @@ h1 {
   bottom: 0.4rem;
   right: 0.5rem;
   font: inherit;
-  font-size: 0.72rem;
+  font-size: 0.9rem;
   line-height: 1;
-  padding: 0.25rem 0.45rem;
+  padding: 0.2rem 0.4rem;
   border: 1px solid var(--border);
   border-radius: 6px;
   background: var(--surface);

@@ -87,7 +87,8 @@ export default function IdeaModal({
 
         <footer className="idea-modal-footer">
           <CopyButton
-            className="copy-button"
+            className="copy-button copy-button-icon"
+            icon="📋"
             label="Copy for Claude"
             getText={() => buildIdeaExport(page, idea)}
           />
@@ -242,8 +243,14 @@ function DeleteIdeaButton({
 
   if (!confirming) {
     return (
-      <button type="button" className="delete-idea" onClick={() => setConfirming(true)}>
-        Delete idea
+      <button
+        type="button"
+        className="delete-idea delete-idea-icon"
+        onClick={() => setConfirming(true)}
+        aria-label="Delete idea"
+        title="Delete idea"
+      >
+        🗑
       </button>
     )
   }

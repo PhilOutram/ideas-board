@@ -149,7 +149,8 @@ function IdeaCard({ idea, setTemperature, onOpen }: CardProps) {
       </button>
       <CopyButton
         className="idea-copy"
-        label="⧉ Copy"
+        icon="📋"
+        label="Copy idea as markdown"
         getText={() => buildIdeaCard(idea)}
       />
     </li>

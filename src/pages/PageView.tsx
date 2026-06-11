@@ -57,7 +57,8 @@ export default function PageView({ page, pages, updatePage, deletePage, onSelect
         <h2 className="page-view-title">{page.title || '(untitled)'}</h2>
         <div className="page-view-actions">
           <CopyButton
-            className="copy-button"
+            className="copy-button copy-button-icon"
+            icon="📋"
             label="Copy all ideas for Claude"
             getText={() => buildPageExport(page, ideas)}
             disabled={ideas.length === 0}
@@ -138,19 +139,26 @@ function DeletePageButton({
     return (
       <button
         type="button"
-        className="delete-page"
+        className="delete-page delete-page-icon"
         disabled
+        aria-label="Delete page"
         title={`Remove its ${childCount} sub-section${childCount === 1 ? '' : 's'} first`}
       >
-        Delete page
+        🗑
       </button>
     )
   }
 
   if (!confirming) {
     return (
-      <button type="button" className="delete-page" onClick={() => setConfirming(true)}>
-        Delete page
+      <button
+        type="button"
+        className="delete-page delete-page-icon"
+        onClick={() => setConfirming(true)}
+        aria-label="Delete page"
+        title="Delete page"
+      >
+        🗑
       </button>
     )
   }
@@ -199,8 +207,14 @@ function SectionBody({ value, onSave }: { value: string; onSave: (v: string) => 
     <section className="section-body">
       <div className="section-body-head">
         <h3 className="page-field-label">Content</h3>
-        <button type="button" className="link-button" onClick={toggle}>
-          {editing ? 'Done' : hasContent ? 'Edit' : '+ Add content'}
+        <button
+          type="button"
+          className="section-edit-toggle"
+          onClick={toggle}
+          aria-label={editing ? 'Done editing' : hasContent ? 'Edit content' : 'Add content'}
+          title={editing ? 'Done editing' : hasContent ? 'Edit content' : 'Add content'}
+        >
+          {editing ? '✓' : '✏'}
         </button>
       </div>
 
@@ -218,7 +232,7 @@ function SectionBody({ value, onSave }: { value: string; onSave: (v: string) => 
         <Markdown source={draft} />
       ) : (
         <p className="muted section-body-empty">
-          No content yet. Click "+ Add content" to write this section (markdown supported).
+          No content yet. Click the ✏ to write this section (markdown supported).
         </p>
       )}
     </section>
