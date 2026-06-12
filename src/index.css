@@ -942,37 +942,40 @@ h1 {
   word-break: break-all;
 }
 
-/* Icon-only variants: compact, near-square. See feedback-icon-buttons. */
-.copy-button-icon,
-.delete-page-icon {
-  padding: 0.34rem 0.52rem;
-  font-size: 1rem;
-  line-height: 1;
-}
-
+/* Icon buttons (page header copy/delete/edit + idea-modal footer copy/move/
+   delete): one shared box so they line up as equal squares regardless of which
+   glyph each renders. The compound selectors override the larger base
+   .copy-button / .delete-page / .delete-idea / .move-idea metrics.
+   See feedback-icon-buttons. */
+.copy-button.copy-button-icon,
+.delete-page.delete-page-icon,
+.delete-idea.delete-idea-icon,
+.move-idea.move-idea-icon,
 .section-edit-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.1rem;
+  height: 2.1rem;
+  padding: 0;
   font: inherit;
   font-size: 1rem;
   line-height: 1;
-  background: none;
-  border: 1px solid var(--border);
+  background: var(--surface);
   color: var(--text-muted);
-  border-radius: 6px;
-  padding: 0.25rem 0.45rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
   cursor: pointer;
 }
 
+/* Copy, move and edit hover to accent; the delete buttons keep their own
+   danger-red hover (below) to signal the destructive action. */
+.copy-button.copy-button-icon:hover:not(:disabled),
+.move-idea.move-idea-icon:hover,
 .section-edit-toggle:hover {
   color: var(--accent);
   border-color: var(--accent);
-}
-
-.delete-idea-icon {
-  font-size: 1rem;
-  line-height: 1;
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  padding: 0.3rem 0.5rem;
+  background: var(--accent-soft);
 }
 
 /* Copy-to-Claude buttons (page header + idea modal footer) */
@@ -1875,6 +1878,7 @@ h1 {
 
 .delete-idea:hover {
   color: var(--danger);
+  border-color: var(--danger);
   background: var(--danger-bg);
 }
 
@@ -1889,24 +1893,7 @@ h1 {
   font-weight: 500;
 }
 
-/* Move-to-page control (idea modal footer) + its page picker. */
-.move-idea-icon {
-  font: inherit;
-  font-size: 1rem;
-  line-height: 1;
-  background: none;
-  border: 1px solid var(--border);
-  color: var(--text-muted);
-  border-radius: 6px;
-  padding: 0.3rem 0.5rem;
-  cursor: pointer;
-}
-
-.move-idea-icon:hover {
-  color: var(--accent);
-  border-color: var(--accent);
-}
-
+/* Move-to-page page picker (the ➡ button shares the icon-button box above). */
 .move-picker-body {
   padding-top: 0.6rem;
 }

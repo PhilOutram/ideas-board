@@ -1,4 +1,4 @@
-export const VERSION = 'v0.26'
+export const VERSION = 'v0.27'
 
 export type ChangelogEntry = {
   version: string
@@ -9,6 +9,14 @@ export type ChangelogEntry = {
 // Newest first. Bump VERSION and add an entry here on every commit so
 // the deployed build always shows exactly what shipped.
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: 'v0.27',
+    date: '2026-06-12',
+    notes: [
+      'Consistent icon buttons: the copy, move, edit and delete icons (on a page and inside an idea) are now all the same size and shape - equal rounded squares - instead of the copy button being larger than the rest.',
+      'The "edit section" icon is now a normal diagonal pencil instead of the odd horizontal one.',
+    ],
+  },
   {
     version: 'v0.26',
     date: '2026-06-12',
