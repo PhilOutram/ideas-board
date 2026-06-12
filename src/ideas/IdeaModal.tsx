@@ -6,14 +6,17 @@ import { buildIdeaExport } from './exportForChat'
 import CopyButton from '../components/CopyButton'
 import { useDebouncedField } from '../lib/useDebouncedField'
 import type { Page } from '../pages/usePages'
+import { buildTree, type PageTreeNode } from '../pages/pageTree'
 
 type Props = {
   idea: Idea
   page: Page
+  pages: Page[]
   inherited: MemorySource[]
   onUpdateTitle: (title: string) => void
   onUpdateBoard: (key: string, value: string) => void
   onAddBoard: (key: string) => Promise<void>
+  onMove: (targetPageId: string) => Promise<void>
   onDelete: () => Promise<void>
   onClose: () => void
 }
@@ -25,10 +28,12 @@ const DEFAULT_BOARDS = ['messy', 'tidy', 'context', 'memory'] as const
 export default function IdeaModal({
   idea,
   page,
+  pages,
   inherited,
   onUpdateTitle,
   onUpdateBoard,
   onAddBoard,
+  onMove,
   onDelete,
   onClose,
 }: Props) {
@@ -91,6 +96,12 @@ export default function IdeaModal({
             icon="📋"
             label="Copy for Claude"
             getText={() => buildIdeaExport(page, idea)}
+          />
+          <MoveIdeaButton
+            pages={pages}
+            currentPageId={page.id}
+            onMove={onMove}
+            onClose={onClose}
           />
           <DeleteIdeaButton onDelete={onDelete} onClose={onClose} />
         </footer>
@@ -219,6 +230,130 @@ function AddBoard({
       </button>
       {error && <p className="add-board-error">{error}</p>}
     </form>
+  )
+}
+
+// Move an idea to another page. Opens a small page-tree picker; choosing a
+// target relocates the idea (copy into that page + delete here) then closes
+// the modal, since the idea no longer lives on this page.
+function MoveIdeaButton({
+  pages,
+  currentPageId,
+  onMove,
+  onClose,
+}: {
+  pages: Page[]
+  currentPageId: string
+  onMove: (targetPageId: string) => Promise<void>
+  onClose: () => void
+}) {
+  const [picking, setPicking] = useState(false)
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  async function handlePick(targetPageId: string) {
+    setBusy(true)
+    setError(null)
+    try {
+      await onMove(targetPageId)
+      onClose()
+    } catch (err) {
+      console.error('Failed to move idea:', err)
+      setError('Could not move the idea.')
+      setBusy(false)
+    }
+  }
+
+  // Only this page exists, so there's nowhere to move to - hide the control.
+  if (pages.length < 2) return null
+
+  return (
+    <>
+      <button
+        type="button"
+        className="move-idea move-idea-icon"
+        onClick={() => setPicking(true)}
+        aria-label="Move idea to another page"
+        title="Move to page"
+      >
+        ➡
+      </button>
+      {picking && (
+        <PagePicker
+          pages={pages}
+          currentPageId={currentPageId}
+          busy={busy}
+          error={error}
+          onPick={handlePick}
+          onCancel={() => {
+            setPicking(false)
+            setError(null)
+          }}
+        />
+      )}
+    </>
+  )
+}
+
+// A nested-tree page chooser. Mirrors the sidebar's tree so the structure is
+// familiar; the current page is shown but disabled (you can't move to here).
+function PagePicker({
+  pages,
+  currentPageId,
+  busy,
+  error,
+  onPick,
+  onCancel,
+}: {
+  pages: Page[]
+  currentPageId: string
+  busy: boolean
+  error: string | null
+  onPick: (targetPageId: string) => void
+  onCancel: () => void
+}) {
+  const tree = buildTree(pages)
+
+  const renderNodes = (nodes: PageTreeNode[], depth: number) =>
+    nodes.map((node) => (
+      <Fragment key={node.page.id}>
+        <li>
+          <button
+            type="button"
+            className="move-picker-item"
+            style={{ paddingLeft: `${0.6 + depth * 1.1}rem` }}
+            disabled={busy || node.page.id === currentPageId}
+            onClick={() => onPick(node.page.id)}
+          >
+            {node.page.title || '(untitled)'}
+            {node.page.id === currentPageId && <span className="muted"> (current)</span>}
+          </button>
+        </li>
+        {node.children.length > 0 && renderNodes(node.children, depth + 1)}
+      </Fragment>
+    ))
+
+  return (
+    <div className="modal-overlay" onClick={onCancel}>
+      <div
+        className="modal-card move-picker"
+        role="dialog"
+        aria-modal="true"
+        aria-label="Move idea to page"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <header className="modal-header">
+          <h3 className="modal-title">Move idea to...</h3>
+          <button type="button" className="modal-close" onClick={onCancel} aria-label="Cancel move">
+            ×
+          </button>
+        </header>
+        <div className="modal-body move-picker-body">
+          {error && <p className="add-board-error" role="alert">{error}</p>}
+          <ul className="move-picker-tree">{renderNodes(tree, 0)}</ul>
+        </div>
+      </div>
+    </div>
   )
 }
 

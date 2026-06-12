@@ -1889,6 +1889,56 @@ h1 {
   font-weight: 500;
 }
 
+/* Move-to-page control (idea modal footer) + its page picker. */
+.move-idea-icon {
+  font: inherit;
+  font-size: 1rem;
+  line-height: 1;
+  background: none;
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+  border-radius: 6px;
+  padding: 0.3rem 0.5rem;
+  cursor: pointer;
+}
+
+.move-idea-icon:hover {
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
+.move-picker-body {
+  padding-top: 0.6rem;
+}
+
+.move-picker-tree {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.move-picker-item {
+  font: inherit;
+  width: 100%;
+  text-align: left;
+  background: none;
+  border: none;
+  border-radius: 6px;
+  color: var(--text);
+  cursor: pointer;
+  padding: 0.4rem 0.6rem;
+}
+
+.move-picker-item:hover:not(:disabled) {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.move-picker-item:disabled {
+  color: var(--text-muted);
+  cursor: default;
+}
+
 /* Page memory/context summary panels */
 .page-fields {
   display: grid;

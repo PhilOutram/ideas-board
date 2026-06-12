@@ -29,6 +29,7 @@ export default function PageView({ page, pages, updatePage, deletePage, onSelect
     updateBoard,
     addBoard,
     setTemperature,
+    moveIdea,
     deleteIdea,
   } = useIdeas(page.id)
   const [openIdeaId, setOpenIdeaId] = useState<string | null>(null)
@@ -110,10 +111,12 @@ export default function PageView({ page, pages, updatePage, deletePage, onSelect
         <IdeaModal
           idea={openIdea}
           page={page}
+          pages={pages}
           inherited={inheritedMemory(page, pages)}
           onUpdateTitle={(title) => updateIdea(openIdea.id, { title })}
           onUpdateBoard={(key, value) => updateBoard(openIdea.id, key, value)}
           onAddBoard={(key) => addBoard(openIdea.id, key)}
+          onMove={(targetPageId) => moveIdea(openIdea.id, targetPageId)}
           onDelete={() => deleteIdea(openIdea.id)}
           onClose={() => setOpenIdeaId(null)}
         />

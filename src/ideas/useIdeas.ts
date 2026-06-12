@@ -9,6 +9,7 @@ import {
   query,
   serverTimestamp,
   updateDoc,
+  writeBatch,
   type Timestamp,
 } from 'firebase/firestore'
 import { db } from '../firebase'
@@ -53,6 +54,7 @@ type UseIdeasResult = {
   updateBoard: (id: string, key: string, value: string) => Promise<void>
   addBoard: (id: string, key: string) => Promise<void>
   setTemperature: (id: string, temperature: Temperature) => Promise<void>
+  moveIdea: (id: string, targetPageId: string) => Promise<void>
   deleteIdea: (id: string) => Promise<void>
 }
 
@@ -169,6 +171,28 @@ export function useIdeas(pageId: string | null): UseIdeasResult {
     await updateIdea(id, { temperature })
   }
 
+  // Ideas live in a per-page subcollection, so a move isn't a field update:
+  // we copy the doc into the target page's `ideas` and delete the original.
+  // A single batch makes it atomic - no chance of a half-move losing the idea.
+  // The new doc gets a fresh id; `created` is preserved, `lastEdited` refreshed.
+  async function moveIdea(id: string, targetPageId: string): Promise<void> {
+    if (!pageId) throw new Error('No page selected.')
+    if (targetPageId === pageId) return
+    const idea = ideas.find((i) => i.id === id)
+    if (!idea) throw new Error('Idea not found.')
+    const batch = writeBatch(db)
+    const targetRef = doc(collection(db, 'pages', targetPageId, 'ideas'))
+    batch.set(targetRef, {
+      title: idea.title,
+      temperature: idea.temperature,
+      boards: idea.boards,
+      created: idea.created ?? serverTimestamp(),
+      lastEdited: serverTimestamp(),
+    })
+    batch.delete(doc(db, 'pages', pageId, 'ideas', id))
+    await batch.commit()
+  }
+
   async function deleteIdea(id: string): Promise<void> {
     if (!pageId) throw new Error('No page selected.')
     await deleteDoc(doc(db, 'pages', pageId, 'ideas', id))
@@ -183,6 +207,7 @@ export function useIdeas(pageId: string | null): UseIdeasResult {
     updateBoard,
     addBoard,
     setTemperature,
+    moveIdea,
     deleteIdea,
   }
 }
