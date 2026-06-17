@@ -1465,67 +1465,153 @@ h1 {
   padding-top: 0.15rem;
 }
 
-.inbox-item-menu-wrap {
-  position: relative;
+/* Inbox item: click-to-edit body + right-hand icon action rail (replaced
+   the old ⋯ menu - see feedback-icon-buttons). */
+.inbox-item-text-button {
+  text-align: left;
+  background: none;
+  border: none;
+  font: inherit;
+  color: inherit;
+  cursor: text;
+  padding: 0.1rem 0.2rem;
+  border-radius: 4px;
 }
 
-.inbox-item-menu-trigger {
+.inbox-item-text-button:hover {
+  background: var(--accent-soft);
+}
+
+.inbox-item-edit {
+  flex: 1;
   font: inherit;
-  font-size: 1.1rem;
+  resize: vertical;
+  padding: 0.4rem 0.5rem;
+  border: 1px solid var(--accent);
+  border-radius: 6px;
+  background: var(--surface);
+  color: var(--text);
+}
+
+.inbox-item-edit:focus {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+
+.inbox-item-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  flex-shrink: 0;
+}
+
+.inbox-delete-confirm {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+/* Small square icon buttons for the inbox rail. Same look as the copy/move/
+   edit icon buttons, a touch smaller for the dense list. */
+.icon-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.9rem;
+  height: 1.9rem;
+  padding: 0;
+  font: inherit;
+  font-size: 0.95rem;
+  line-height: 1;
+  background: var(--surface);
+  color: var(--text-muted);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.icon-action:hover:not(:disabled) {
+  color: var(--accent);
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.icon-action:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.icon-action-danger:hover:not(:disabled) {
+  color: var(--danger);
+  border-color: var(--danger);
+  background: var(--danger-bg);
+}
+
+/* Settings: header gear + modal */
+.settings-btn {
+  font-size: 1.05rem;
   line-height: 1;
   background: none;
   border: none;
   color: var(--text-muted);
   cursor: pointer;
-  padding: 0.15rem 0.45rem;
+  padding: 0.2rem 0.4rem;
   border-radius: 6px;
 }
 
-.inbox-item-menu-trigger:hover,
-.inbox-item-menu-trigger[aria-expanded='true'] {
-  background: var(--bg);
-  color: var(--text);
+.settings-btn:hover {
+  color: var(--accent);
+  background: var(--accent-soft);
 }
 
-/* Popover (reused) */
-.popover {
-  position: absolute;
-  top: 100%;
-  right: 0;
-  margin-top: 0.25rem;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
-  z-index: 50;
-  min-width: 12rem;
-  padding: 0.25rem;
+.settings-modal {
+  max-width: 30rem;
+}
+
+.settings-body {
   display: flex;
   flex-direction: column;
+  gap: 0.9rem;
 }
 
-.popover button {
-  font: inherit;
+.settings-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.settings-label {
+  font-weight: 600;
   font-size: 0.92rem;
-  text-align: left;
-  padding: 0.45rem 0.6rem;
-  background: none;
-  border: none;
+}
+
+.settings-field input {
+  font: inherit;
+  padding: 0.5rem 0.6rem;
+  border: 1px solid var(--border);
   border-radius: 6px;
-  cursor: pointer;
+  background: var(--surface);
   color: var(--text);
 }
 
-.popover button:hover {
-  background: var(--bg);
+.settings-field input:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
 }
 
-.popover-danger {
-  color: var(--danger) !important;
+.settings-hint {
+  font-size: 0.8rem;
 }
 
-.popover-danger:hover {
-  background: var(--danger-bg) !important;
+.settings-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.voice-email-error {
+  margin: 0.4rem 0 0;
 }
 
 /* Ideas list + temperature cards */

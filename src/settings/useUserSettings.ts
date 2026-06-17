@@ -8,12 +8,15 @@ import { DEFAULT_THOUGHTS_PROMPT } from '../ai/prompts'
 export type UserSettings = {
   thoughtsPrompt: string // effective prompt (custom if set, else the default)
   isCustomThoughtsPrompt: boolean
+  forwardEmail: string // work/forward address for the ✉ buttons ('' = unset)
   loaded: boolean
   setThoughtsPrompt: (prompt: string) => Promise<void>
+  setForwardEmail: (email: string) => Promise<void>
 }
 
 export function useUserSettings(userId: string): UserSettings {
   const [custom, setCustom] = useState('')
+  const [forwardEmail, setForwardEmailState] = useState('')
   const [loaded, setLoaded] = useState(false)
 
   useEffect(() => {
@@ -23,6 +26,7 @@ export function useUserSettings(userId: string): UserSettings {
       (snap) => {
         const data = snap.data()
         setCustom((data?.thoughtsPrompt as string | undefined) ?? '')
+        setForwardEmailState((data?.forwardEmail as string | undefined) ?? '')
         setLoaded(true)
       },
       () => setLoaded(true),
@@ -37,10 +41,18 @@ export function useUserSettings(userId: string): UserSettings {
     await setDoc(doc(db, 'userSettings', userId), { thoughtsPrompt: value }, { merge: true })
   }
 
+  // Persist the forward address (an empty string clears it). Kept private to
+  // the user by the existing /userSettings ownership rule.
+  async function setForwardEmail(email: string): Promise<void> {
+    await setDoc(doc(db, 'userSettings', userId), { forwardEmail: email.trim() }, { merge: true })
+  }
+
   return {
     thoughtsPrompt: custom || DEFAULT_THOUGHTS_PROMPT,
     isCustomThoughtsPrompt: !!custom,
+    forwardEmail,
     loaded,
     setThoughtsPrompt,
+    setForwardEmail,
   }
 }

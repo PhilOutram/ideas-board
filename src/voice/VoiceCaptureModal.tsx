@@ -4,6 +4,7 @@ import { useWakeLock } from './useWakeLock'
 import { callAi } from '../ai/aiClient'
 import { DEFAULT_THOUGHTS_PROMPT } from '../ai/prompts'
 import { useSettings } from '../settings/SettingsContext'
+import { sendForwardEmail, subjectFromNote } from '../lib/email'
 
 type SaveAction = (text: string) => Promise<void> | void
 
@@ -26,7 +27,7 @@ export default function VoiceCaptureModal({
   onClose,
 }: Props) {
   const { supported, listening, transcript, interim, error, start, stop, reset } = useVoiceCapture()
-  const { thoughtsPrompt, setThoughtsPrompt } = useSettings()
+  const { thoughtsPrompt, setThoughtsPrompt, forwardEmail } = useSettings()
 
   // Hold the screen on while actively recording so the phone doesn't sleep
   // mid-capture (which would suspend the page and cut the mic).
@@ -44,6 +45,11 @@ export default function VoiceCaptureModal({
   const [thinking, setThinking] = useState(false)
   const [thoughtsError, setThoughtsError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
+
+  // Email is a "fire to work" side-action: unlike the four save buttons it
+  // does NOT close the modal, so the note can still also be saved somewhere.
+  const [emailState, setEmailState] = useState<'idle' | 'sending' | 'sent' | 'failed'>('idle')
+  const [emailError, setEmailError] = useState<string | null>(null)
 
   const [editingPrompt, setEditingPrompt] = useState(false)
   const [promptDraft, setPromptDraft] = useState('')
@@ -173,6 +179,23 @@ export default function VoiceCaptureModal({
     } catch (err) {
       console.error('Save action failed:', err)
       setSaving(false)
+    }
+  }
+
+  async function doEmail() {
+    const note = buildNote()
+    if (!note || !forwardEmail) return
+    setEmailState('sending')
+    setEmailError(null)
+    try {
+      await sendForwardEmail({ to: forwardEmail, subject: subjectFromNote(note), text: note })
+      setEmailState('sent')
+      window.setTimeout(() => setEmailState('idle'), 2500)
+    } catch (err) {
+      console.error('Email action failed:', err)
+      setEmailState('failed')
+      setEmailError(err instanceof Error ? err.message : 'Could not send the email.')
+      window.setTimeout(() => setEmailState('idle'), 2500)
     }
   }
 
@@ -416,7 +439,27 @@ export default function VoiceCaptureModal({
               >
                 📝 Add to context
               </button>
+              <button
+                type="button"
+                className="voice-action"
+                onClick={doEmail}
+                disabled={!canSave || saving || emailState === 'sending' || !forwardEmail}
+                title={
+                  forwardEmail
+                    ? `Email to ${forwardEmail}`
+                    : 'Set a forward email in Settings first'
+                }
+              >
+                {emailState === 'sent'
+                  ? '✓ Emailed'
+                  : emailState === 'sending'
+                    ? '… Emailing'
+                    : emailState === 'failed'
+                      ? '✗ Failed'
+                      : '✉️ Email to work'}
+              </button>
             </div>
+            {emailError && <p className="ai-error voice-email-error">{emailError}</p>}
             <div className="voice-actions-secondary">
               {supported && (
                 <button type="button" className="voice-record" onClick={recordAgain}>

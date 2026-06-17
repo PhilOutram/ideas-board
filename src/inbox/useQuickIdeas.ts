@@ -8,6 +8,7 @@ import {
   orderBy,
   query,
   serverTimestamp,
+  updateDoc,
   type Timestamp,
 } from 'firebase/firestore'
 import { db } from '../firebase'
@@ -23,6 +24,7 @@ type UseQuickIdeasResult = {
   loading: boolean
   error: Error | null
   addQuickIdea: (text: string) => Promise<void>
+  updateQuickIdea: (id: string, text: string) => Promise<void>
   deleteQuickIdea: (id: string) => Promise<void>
 }
 
@@ -77,10 +79,17 @@ export function useQuickIdeas(pageId: string | null): UseQuickIdeasResult {
     })
   }
 
+  async function updateQuickIdea(id: string, text: string): Promise<void> {
+    if (!pageId) throw new Error('No page selected.')
+    const trimmed = text.trim()
+    if (!trimmed) return
+    await updateDoc(doc(db, 'pages', pageId, 'quickIdeas', id), { text: trimmed })
+  }
+
   async function deleteQuickIdea(id: string): Promise<void> {
     if (!pageId) throw new Error('No page selected.')
     await deleteDoc(doc(db, 'pages', pageId, 'quickIdeas', id))
   }
 
-  return { quickIdeas, loading, error, addQuickIdea, deleteQuickIdea }
+  return { quickIdeas, loading, error, addQuickIdea, updateQuickIdea, deleteQuickIdea }
 }

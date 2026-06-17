@@ -1,4 +1,4 @@
-export const VERSION = 'v0.27'
+export const VERSION = 'v0.28'
 
 export type ChangelogEntry = {
   version: string
@@ -9,6 +9,15 @@ export type ChangelogEntry = {
 // Newest first. Bump VERSION and add an entry here on every commit so
 // the deployed build always shows exactly what shipped.
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: 'v0.28',
+    date: '2026-06-17',
+    notes: [
+      'Email an idea to your work account: set a "Forward / work email" in the new Settings (⚙ in the header), then use the ✉ button - in a voice capture (alongside Save as idea / inbox / memory / context) or on any inbox item - to send the captured note straight to that address. Sending is handled server-side via EmailJS; your address is stored privately to your account.',
+      'Inbox items are now editable: click an item to edit its text inline (Enter to save, Esc to cancel).',
+      'Inbox items now show a row of icon buttons instead of the "..." menu: push to idea, copy text, forward to email, and delete (with a confirm). Send-to-memory/context move off the inbox - do those after pushing to an idea.',
+    ],
+  },
   {
     version: 'v0.27',
     date: '2026-06-12',

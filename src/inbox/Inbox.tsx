@@ -1,8 +1,11 @@
-import { useRef, useState, type FormEvent } from 'react'
+import { useState, useRef, type FormEvent, type KeyboardEvent } from 'react'
 import type { Page, PagePatch } from '../pages/usePages'
 import type { NewIdeaInput } from '../ideas/useIdeas'
 import VoiceCaptureModal from '../voice/VoiceCaptureModal'
 import { makeIdeaTitle } from '../ai/aiClient'
+import CopyButton from '../components/CopyButton'
+import { useSettings } from '../settings/SettingsContext'
+import { sendForwardEmail, subjectFromNote } from '../lib/email'
 import { useQuickIdeas, type QuickIdea } from './useQuickIdeas'
 
 type Props = {
@@ -12,7 +15,9 @@ type Props = {
 }
 
 export default function Inbox({ page, updatePage, createIdea }: Props) {
-  const { quickIdeas, loading, error, addQuickIdea, deleteQuickIdea } = useQuickIdeas(page.id)
+  const { quickIdeas, loading, error, addQuickIdea, updateQuickIdea, deleteQuickIdea } =
+    useQuickIdeas(page.id)
+  const { forwardEmail } = useSettings()
   const [draft, setDraft] = useState('')
   const [voiceOpen, setVoiceOpen] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
@@ -40,14 +45,8 @@ export default function Inbox({ page, updatePage, createIdea }: Props) {
     await deleteQuickIdea(item.id)
   }
 
-  async function sendTo(field: 'memory' | 'context', item: QuickIdea) {
-    const stamp = item.created ? formatArchiveDate(item.created.toDate()) : ''
-    await appendToField(field, item.text, stamp)
-    await deleteQuickIdea(item.id)
-  }
-
   // Append a snippet to the page's memory/context board with a date stamp.
-  // Shared by the inbox "send to" actions and the voice capture buttons.
+  // Used by the voice capture "add to memory/context" buttons.
   async function appendToField(field: 'memory' | 'context', text: string, stamp?: string) {
     const trimmed = text.trim()
     if (!trimmed) return
@@ -113,9 +112,9 @@ export default function Inbox({ page, updatePage, createIdea }: Props) {
             <InboxItem
               key={item.id}
               item={item}
+              forwardEmail={forwardEmail}
               onPromote={() => promote(item)}
-              onSendToMemory={() => sendTo('memory', item)}
-              onSendToContext={() => sendTo('context', item)}
+              onSaveEdit={(text) => updateQuickIdea(item.id, text)}
               onDelete={() => deleteQuickIdea(item.id)}
             />
           ))}
@@ -127,21 +126,50 @@ export default function Inbox({ page, updatePage, createIdea }: Props) {
 
 type ItemProps = {
   item: QuickIdea
+  forwardEmail: string
   onPromote: () => Promise<void> | void
-  onSendToMemory: () => Promise<void> | void
-  onSendToContext: () => Promise<void> | void
+  onSaveEdit: (text: string) => Promise<void>
   onDelete: () => Promise<void> | void
 }
 
-function InboxItem({ item, onPromote, onSendToMemory, onSendToContext, onDelete }: ItemProps) {
-  const [menuOpen, setMenuOpen] = useState(false)
+function InboxItem({ item, forwardEmail, onPromote, onSaveEdit, onDelete }: ItemProps) {
+  const [editing, setEditing] = useState(false)
+  const [draft, setDraft] = useState(item.text)
+  const [confirmingDelete, setConfirmingDelete] = useState(false)
+  const [emailState, setEmailState] = useState<'idle' | 'sending' | 'sent' | 'failed'>('idle')
 
   const created = item.created?.toDate() ?? null
   const stamp = created ? formatStamp(created) : '...'
   const fullStamp = created ? created.toLocaleString() : ''
 
+  function startEdit() {
+    setDraft(item.text)
+    setEditing(true)
+  }
+
+  async function commitEdit() {
+    const next = draft.trim()
+    setEditing(false)
+    if (!next || next === item.text) return
+    try {
+      await onSaveEdit(next)
+    } catch (err) {
+      console.error('Failed to save inbox edit:', err)
+    }
+  }
+
+  function onEditKeyDown(e: KeyboardEvent<HTMLTextAreaElement>) {
+    // Enter commits (Shift+Enter inserts a newline); Esc cancels the edit.
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault()
+      void commitEdit()
+    } else if (e.key === 'Escape') {
+      e.preventDefault()
+      setEditing(false)
+    }
+  }
+
   async function run(action: () => Promise<void> | void) {
-    setMenuOpen(false)
     try {
       await action()
     } catch (err) {
@@ -149,50 +177,116 @@ function InboxItem({ item, onPromote, onSendToMemory, onSendToContext, onDelete 
     }
   }
 
+  async function forward() {
+    if (!forwardEmail) return
+    setEmailState('sending')
+    try {
+      await sendForwardEmail({
+        to: forwardEmail,
+        subject: subjectFromNote(item.text),
+        text: item.text,
+      })
+      setEmailState('sent')
+    } catch (err) {
+      console.error('Failed to forward inbox item:', err)
+      setEmailState('failed')
+    }
+    window.setTimeout(() => setEmailState('idle'), 2500)
+  }
+
+  const emailGlyph =
+    emailState === 'sent'
+      ? '✓'
+      : emailState === 'failed'
+        ? '✗'
+        : emailState === 'sending'
+          ? '…'
+          : '✉️'
+
   return (
     <li className="inbox-item">
       <div className="inbox-item-body">
-        <p className="inbox-item-text">{item.text}</p>
+        {editing ? (
+          <textarea
+            className="inbox-item-edit"
+            value={draft}
+            rows={3}
+            autoFocus
+            onChange={(e) => setDraft(e.target.value)}
+            onBlur={commitEdit}
+            onKeyDown={onEditKeyDown}
+            aria-label="Edit idea"
+          />
+        ) : (
+          <button
+            type="button"
+            className="inbox-item-text inbox-item-text-button"
+            onClick={startEdit}
+            title="Click to edit"
+          >
+            {item.text}
+          </button>
+        )}
         <time className="inbox-item-stamp" title={fullStamp}>{stamp}</time>
       </div>
 
-      <div className="inbox-item-menu-wrap">
+      <div className="inbox-item-actions">
         <button
           type="button"
-          className="inbox-item-menu-trigger"
-          aria-label="More actions"
-          aria-haspopup="menu"
-          aria-expanded={menuOpen}
-          onClick={() => setMenuOpen((v) => !v)}
-          onBlur={(e) => {
-            // Close menu when focus leaves the wrapper entirely.
-            if (!e.currentTarget.parentElement?.contains(e.relatedTarget as Node)) {
-              setMenuOpen(false)
-            }
-          }}
+          className="icon-action"
+          onClick={() => run(onPromote)}
+          aria-label="Push to idea"
+          title="Push to idea"
         >
-          ⋯
+          💡
         </button>
-        {menuOpen && (
-          <div className="popover" role="menu">
-            <button type="button" role="menuitem" onClick={() => run(onPromote)}>
-              Promote to idea
-            </button>
-            <button type="button" role="menuitem" onClick={() => run(onSendToMemory)}>
-              Send to memory
-            </button>
-            <button type="button" role="menuitem" onClick={() => run(onSendToContext)}>
-              Send to context
+        <CopyButton
+          className="icon-action"
+          icon="📋"
+          label="Copy text"
+          getText={() => item.text}
+        />
+        <button
+          type="button"
+          className="icon-action"
+          onClick={forward}
+          disabled={!forwardEmail || emailState === 'sending'}
+          aria-label={forwardEmail ? `Forward to ${forwardEmail}` : 'Set a forward email in Settings'}
+          title={forwardEmail ? `Forward to ${forwardEmail}` : 'Set a forward email in Settings'}
+        >
+          {emailGlyph}
+        </button>
+        {confirmingDelete ? (
+          <span className="inbox-delete-confirm">
+            <button
+              type="button"
+              className="icon-action icon-action-danger"
+              onClick={() => run(onDelete)}
+              aria-label="Confirm delete"
+              title="Confirm delete"
+            >
+              ✓
             </button>
             <button
               type="button"
-              role="menuitem"
-              className="popover-danger"
-              onClick={() => run(onDelete)}
+              className="icon-action"
+              onClick={() => setConfirmingDelete(false)}
+              aria-label="Cancel delete"
+              title="Cancel"
             >
-              Delete
+              ✕
             </button>
-          </div>
+          </span>
+        ) : (
+          <button
+            type="button"
+            className="icon-action icon-action-danger"
+            onClick={() => setConfirmingDelete(true)}
+            aria-label="Delete"
+            title="Delete"
+          >
+            🗑
+          </button>
         )}
       </div>
     </li>

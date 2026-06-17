@@ -7,6 +7,7 @@ import PageView from '../pages/PageView'
 import ImportModal from '../pages/ImportModal'
 import { usePages } from '../pages/usePages'
 import { SettingsProvider } from '../settings/SettingsContext'
+import SettingsModal from '../settings/SettingsModal'
 
 type Props = {
   user: User
@@ -16,6 +17,7 @@ export default function SignedInShell({ user }: Props) {
   const { pages, loading, error, createPage, updatePage, deletePage } = usePages(user.uid)
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [importOpen, setImportOpen] = useState(false)
+  const [settingsOpen, setSettingsOpen] = useState(false)
 
   // If nothing is selected (first load, or selected page was deleted),
   // fall back to the most recent page so the user always sees content.
@@ -41,6 +43,15 @@ export default function SignedInShell({ user }: Props) {
         <AppTitle />
         <div className="app-user">
           <span className="muted">{user.email}</span>
+          <button
+            type="button"
+            className="settings-btn"
+            onClick={() => setSettingsOpen(true)}
+            aria-label="Settings"
+            title="Settings"
+          >
+            ⚙
+          </button>
           <button type="button" className="link-button" onClick={handleSignOut}>
             Sign out
           </button>
@@ -86,6 +97,8 @@ export default function SignedInShell({ user }: Props) {
           onImported={setSelectedId}
         />
       )}
+
+      {settingsOpen && <SettingsModal onClose={() => setSettingsOpen(false)} />}
     </div>
     </SettingsProvider>
   )
