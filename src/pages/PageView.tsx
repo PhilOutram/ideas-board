@@ -217,7 +217,7 @@ function SectionBody({ value, onSave }: { value: string; onSave: (v: string) => 
           aria-label={editing ? 'Done editing' : hasContent ? 'Edit content' : 'Add content'}
           title={editing ? 'Done editing' : hasContent ? 'Edit content' : 'Add content'}
         >
-          {editing ? '✓' : '✏️'}
+          {editing ? '✓' : <span className="pencil-flip" aria-hidden="true">✏️</span>}
         </button>
       </div>
 

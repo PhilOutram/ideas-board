@@ -2,9 +2,11 @@ import { Fragment, useEffect, useState, type FormEvent } from 'react'
 import type { Idea } from './useIdeas'
 import { boardKeyFromName } from './useIdeas'
 import type { MemorySource } from './inheritance'
-import { buildIdeaExport } from './exportForChat'
+import { buildIdeaExport, buildIdeaCard } from './exportForChat'
 import CopyButton from '../components/CopyButton'
 import { useDebouncedField } from '../lib/useDebouncedField'
+import { useSettings } from '../settings/SettingsContext'
+import { sendForwardEmail } from '../lib/email'
 import type { Page } from '../pages/usePages'
 import { buildTree, type PageTreeNode } from '../pages/pageTree'
 
@@ -96,6 +98,10 @@ export default function IdeaModal({
             icon="📋"
             label="Copy for Claude"
             getText={() => buildIdeaExport(page, idea)}
+          />
+          <EmailIdeaButton
+            subject={idea.title ? `Idea: ${idea.title}` : 'Idea'}
+            getBody={() => buildIdeaCard(idea)}
           />
           <MoveIdeaButton
             pages={pages}
@@ -230,6 +236,43 @@ function AddBoard({
       </button>
       {error && <p className="add-board-error">{error}</p>}
     </form>
+  )
+}
+
+// Email the whole idea (title + its non-empty boards) to the user's configured
+// work address. Reads forwardEmail from settings; disabled with a hint if none
+// is set. Shows a transient ✓/✗ and does not close the modal.
+function EmailIdeaButton({ subject, getBody }: { subject: string; getBody: () => string }) {
+  const { forwardEmail } = useSettings()
+  const [state, setState] = useState<'idle' | 'sending' | 'sent' | 'failed'>('idle')
+
+  async function handleEmail() {
+    if (!forwardEmail) return
+    setState('sending')
+    try {
+      await sendForwardEmail({ to: forwardEmail, subject, text: getBody() })
+      setState('sent')
+    } catch (err) {
+      console.error('Failed to email idea:', err)
+      setState('failed')
+    }
+    window.setTimeout(() => setState('idle'), 2500)
+  }
+
+  const glyph =
+    state === 'sent' ? '✓' : state === 'failed' ? '✗' : state === 'sending' ? '…' : '✉️'
+
+  return (
+    <button
+      type="button"
+      className="email-idea email-idea-icon"
+      onClick={handleEmail}
+      disabled={!forwardEmail || state === 'sending'}
+      aria-label={forwardEmail ? `Email idea to ${forwardEmail}` : 'Set a forward email in Settings'}
+      title={forwardEmail ? `Email idea to ${forwardEmail}` : 'Set a forward email in Settings'}
+    >
+      {glyph}
+    </button>
   )
 }
 

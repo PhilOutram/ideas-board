@@ -1,4 +1,4 @@
-export const VERSION = 'v0.28'
+export const VERSION = 'v0.29'
 
 export type ChangelogEntry = {
   version: string
@@ -9,6 +9,14 @@ export type ChangelogEntry = {
 // Newest first. Bump VERSION and add an entry here on every commit so
 // the deployed build always shows exactly what shipped.
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: 'v0.29',
+    date: '2026-06-19',
+    notes: [
+      'Email a whole idea: open an idea and use the new ✉ button in the footer (next to Copy) to send it to your configured work email - the idea title and its boards go in the message.',
+      'The edit pencil icon now slopes the natural way for a right hand (mirrored horizontally).',
+    ],
+  },
   {
     version: 'v0.28',
     date: '2026-06-17',

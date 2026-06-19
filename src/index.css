@@ -948,6 +948,7 @@ h1 {
    .copy-button / .delete-page / .delete-idea / .move-idea metrics.
    See feedback-icon-buttons. */
 .copy-button.copy-button-icon,
+.email-idea.email-idea-icon,
 .delete-page.delete-page-icon,
 .delete-idea.delete-idea-icon,
 .move-idea.move-idea-icon,
@@ -968,14 +969,27 @@ h1 {
   cursor: pointer;
 }
 
-/* Copy, move and edit hover to accent; the delete buttons keep their own
-   danger-red hover (below) to signal the destructive action. */
+/* Copy, email, move and edit hover to accent; the delete buttons keep their
+   own danger-red hover (below) to signal the destructive action. */
 .copy-button.copy-button-icon:hover:not(:disabled),
+.email-idea.email-idea-icon:hover:not(:disabled),
 .move-idea.move-idea-icon:hover,
 .section-edit-toggle:hover {
   color: var(--accent);
   border-color: var(--accent);
   background: var(--accent-soft);
+}
+
+.email-idea.email-idea-icon:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* The pencil emoji slopes the wrong way for a right-handed pencil; mirror it
+   horizontally so the tip points down to the left. */
+.pencil-flip {
+  display: inline-block;
+  transform: scaleX(-1);
 }
 
 /* Copy-to-Claude buttons (page header + idea modal footer) */
