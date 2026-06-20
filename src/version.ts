@@ -1,4 +1,4 @@
-export const VERSION = 'v0.29'
+export const VERSION = 'v0.30'
 
 export type ChangelogEntry = {
   version: string
@@ -9,6 +9,17 @@ export type ChangelogEntry = {
 // Newest first. Bump VERSION and add an entry here on every commit so
 // the deployed build always shows exactly what shipped.
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: 'v0.30',
+    date: '2026-06-20',
+    notes: [
+      'The sidebar now remembers which page branches you had open, between visits. Branches start collapsed and open one level at a time; double-click a folder triangle to open (or close) that whole branch at once.',
+      'Import Markdown is now a compact ⬇ button next to the "+", instead of taking up its own row.',
+      'Top-level "books" stand out from their sub-pages: each gets a coloured left stripe, a faint shade and a bolder, slightly larger title.',
+      'Inbox notes are now sized to their text (up to 6 lines, then "..."). Short notes no longer reserve four rows of buttons - only the buttons that fit show, with the rest tucked behind a "..." button.',
+      'When emailing an idea or an inbox note fails, the reason now shows inline instead of just a silent ✗.',
+    ],
+  },
   {
     version: 'v0.29',
     date: '2026-06-19',

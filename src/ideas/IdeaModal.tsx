@@ -47,6 +47,8 @@ export default function IdeaModal({
     return () => window.removeEventListener('keydown', onKey)
   }, [onClose])
 
+  const [emailError, setEmailError] = useState<string | null>(null)
+
   const customKeys = Object.keys(idea.boards).filter(
     (k) => !DEFAULT_BOARDS.includes(k as (typeof DEFAULT_BOARDS)[number]),
   )
@@ -102,6 +104,7 @@ export default function IdeaModal({
           <EmailIdeaButton
             subject={idea.title ? `Idea: ${idea.title}` : 'Idea'}
             getBody={() => buildIdeaCard(idea)}
+            onError={setEmailError}
           />
           <MoveIdeaButton
             pages={pages}
@@ -110,6 +113,9 @@ export default function IdeaModal({
             onClose={onClose}
           />
           <DeleteIdeaButton onDelete={onDelete} onClose={onClose} />
+          {emailError && (
+            <p className="ai-error email-inline-error" role="alert">{emailError}</p>
+          )}
         </footer>
       </div>
     </div>
@@ -241,20 +247,30 @@ function AddBoard({
 
 // Email the whole idea (title + its non-empty boards) to the user's configured
 // work address. Reads forwardEmail from settings; disabled with a hint if none
-// is set. Shows a transient ✓/✗ and does not close the modal.
-function EmailIdeaButton({ subject, getBody }: { subject: string; getBody: () => string }) {
+// is set. Shows a transient ✓/✗, reports any failure message to the parent via
+// onError (shown inline under the footer), and does not close the modal.
+function EmailIdeaButton({
+  subject,
+  getBody,
+  onError,
+}: {
+  subject: string
+  getBody: () => string
+  onError: (message: string | null) => void
+}) {
   const { forwardEmail } = useSettings()
   const [state, setState] = useState<'idle' | 'sending' | 'sent' | 'failed'>('idle')
 
   async function handleEmail() {
     if (!forwardEmail) return
+    onError(null)
     setState('sending')
     try {
       await sendForwardEmail({ to: forwardEmail, subject, text: getBody() })
       setState('sent')
     } catch (err) {
-      console.error('Failed to email idea:', err)
       setState('failed')
+      onError(err instanceof Error ? err.message : 'Could not send the email.')
     }
     window.setTimeout(() => setState('idle'), 2500)
   }

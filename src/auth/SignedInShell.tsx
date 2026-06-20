@@ -60,6 +60,7 @@ export default function SignedInShell({ user }: Props) {
 
       <div className="app-body">
         <PagesSidebar
+          userId={user.uid}
           pages={pages}
           selectedId={selectedId}
           onSelect={setSelectedId}

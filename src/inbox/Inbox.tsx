@@ -1,4 +1,11 @@
-import { useState, useRef, type FormEvent, type KeyboardEvent } from 'react'
+import {
+  useEffect,
+  useRef,
+  useState,
+  type FormEvent,
+  type KeyboardEvent,
+  type ReactNode,
+} from 'react'
 import type { Page, PagePatch } from '../pages/usePages'
 import type { NewIdeaInput } from '../ideas/useIdeas'
 import VoiceCaptureModal from '../voice/VoiceCaptureModal'
@@ -132,11 +139,38 @@ type ItemProps = {
   onDelete: () => Promise<void> | void
 }
 
+// One icon-action button (1.9rem) plus the column gap (0.3rem). Used to work
+// out how many action buttons fit alongside the (text-sized) item body.
+const ACTION_BTN_REM = 1.9
+const ACTION_GAP_REM = 0.3
+
 function InboxItem({ item, forwardEmail, onPromote, onSaveEdit, onDelete }: ItemProps) {
   const [editing, setEditing] = useState(false)
   const [draft, setDraft] = useState(item.text)
   const [confirmingDelete, setConfirmingDelete] = useState(false)
   const [emailState, setEmailState] = useState<'idle' | 'sending' | 'sent' | 'failed'>('idle')
+  const [emailError, setEmailError] = useState<string | null>(null)
+  const [overflowOpen, setOverflowOpen] = useState(false)
+  // How many action buttons the body is tall enough to show (1..4). The box is
+  // sized to its text (up to 6 lines), so a one-line note shows a single "..."
+  // and a tall note shows the whole rail. Defaults high until measured.
+  const [capacity, setCapacity] = useState(4)
+  const bodyRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    const el = bodyRef.current
+    if (!el) return
+    const root = parseFloat(getComputedStyle(document.documentElement).fontSize) || 16
+    const compute = () => {
+      const unit = (ACTION_BTN_REM + ACTION_GAP_REM) * root
+      const fit = Math.floor((el.clientHeight + ACTION_GAP_REM * root) / unit)
+      setCapacity(Math.min(4, Math.max(1, fit)))
+    }
+    compute()
+    const ro = new ResizeObserver(compute)
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [])
 
   const created = item.created?.toDate() ?? null
   const stamp = created ? formatStamp(created) : '...'
@@ -179,6 +213,7 @@ function InboxItem({ item, forwardEmail, onPromote, onSaveEdit, onDelete }: Item
 
   async function forward() {
     if (!forwardEmail) return
+    setEmailError(null)
     setEmailState('sending')
     try {
       await sendForwardEmail({
@@ -188,8 +223,8 @@ function InboxItem({ item, forwardEmail, onPromote, onSaveEdit, onDelete }: Item
       })
       setEmailState('sent')
     } catch (err) {
-      console.error('Failed to forward inbox item:', err)
       setEmailState('failed')
+      setEmailError(err instanceof Error ? err.message : 'Could not send the email.')
     }
     window.setTimeout(() => setEmailState('idle'), 2500)
   }
@@ -203,9 +238,69 @@ function InboxItem({ item, forwardEmail, onPromote, onSaveEdit, onDelete }: Item
           ? '…'
           : '✉️'
 
+  // The action rail, in priority order. Buttons that don't fit the text-sized
+  // box collapse behind a trailing "..." button that opens the rest in a panel.
+  const actions: { key: string; node: ReactNode }[] = [
+    {
+      key: 'promote',
+      node: (
+        <button
+          type="button"
+          className="icon-action"
+          onClick={() => run(onPromote)}
+          aria-label="Push to idea"
+          title="Push to idea"
+        >
+          💡
+        </button>
+      ),
+    },
+    {
+      key: 'copy',
+      node: <CopyButton className="icon-action" icon="📋" label="Copy text" getText={() => item.text} />,
+    },
+    {
+      key: 'forward',
+      node: (
+        <button
+          type="button"
+          className="icon-action"
+          onClick={forward}
+          disabled={!forwardEmail || emailState === 'sending'}
+          aria-label={forwardEmail ? `Forward to ${forwardEmail}` : 'Set a forward email in Settings'}
+          title={forwardEmail ? `Forward to ${forwardEmail}` : 'Set a forward email in Settings'}
+        >
+          {emailGlyph}
+        </button>
+      ),
+    },
+    {
+      key: 'delete',
+      node: (
+        <button
+          type="button"
+          className="icon-action icon-action-danger"
+          onClick={() => {
+            setOverflowOpen(false)
+            setConfirmingDelete(true)
+          }}
+          aria-label="Delete"
+          title="Delete"
+        >
+          🗑
+        </button>
+      ),
+    },
+  ]
+
+  // When something has to hide, the last visible slot becomes the "..." button.
+  const showAll = capacity >= actions.length
+  const visible = showAll ? actions : actions.slice(0, Math.max(0, capacity - 1))
+  const hidden = showAll ? [] : actions.slice(Math.max(0, capacity - 1))
+
   return (
     <li className="inbox-item">
-      <div className="inbox-item-body">
+      <div className="inbox-item-body" ref={bodyRef}>
         {editing ? (
           <textarea
             className="inbox-item-edit"
@@ -231,31 +326,6 @@ function InboxItem({ item, forwardEmail, onPromote, onSaveEdit, onDelete }: Item
       </div>
 
       <div className="inbox-item-actions">
-        <button
-          type="button"
-          className="icon-action"
-          onClick={() => run(onPromote)}
-          aria-label="Push to idea"
-          title="Push to idea"
-        >
-          💡
-        </button>
-        <CopyButton
-          className="icon-action"
-          icon="📋"
-          label="Copy text"
-          getText={() => item.text}
-        />
-        <button
-          type="button"
-          className="icon-action"
-          onClick={forward}
-          disabled={!forwardEmail || emailState === 'sending'}
-          aria-label={forwardEmail ? `Forward to ${forwardEmail}` : 'Set a forward email in Settings'}
-          title={forwardEmail ? `Forward to ${forwardEmail}` : 'Set a forward email in Settings'}
-        >
-          {emailGlyph}
-        </button>
         {confirmingDelete ? (
           <span className="inbox-delete-confirm">
             <button
@@ -278,17 +348,39 @@ function InboxItem({ item, forwardEmail, onPromote, onSaveEdit, onDelete }: Item
             </button>
           </span>
         ) : (
-          <button
-            type="button"
-            className="icon-action icon-action-danger"
-            onClick={() => setConfirmingDelete(true)}
-            aria-label="Delete"
-            title="Delete"
-          >
-            🗑
-          </button>
+          <>
+            {visible.map((a) => (
+              <span key={a.key} className="inbox-action-slot">{a.node}</span>
+            ))}
+            {hidden.length > 0 && (
+              <>
+                <button
+                  type="button"
+                  className="icon-action"
+                  onClick={() => setOverflowOpen((v) => !v)}
+                  aria-haspopup="true"
+                  aria-expanded={overflowOpen}
+                  aria-label="More actions"
+                  title="More actions"
+                >
+                  ⋯
+                </button>
+                {overflowOpen && (
+                  <div className="inbox-overflow-panel" onClick={() => setOverflowOpen(false)}>
+                    {hidden.map((a) => (
+                      <span key={a.key} className="inbox-action-slot">{a.node}</span>
+                    ))}
+                  </div>
+                )}
+              </>
+            )}
+          </>
         )}
       </div>
+
+      {emailError && (
+        <p className="ai-error email-inline-error" role="alert">{emailError}</p>
+      )}
     </li>
   )
 }

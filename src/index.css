@@ -495,6 +495,22 @@ h1 {
   background: var(--accent-soft);
 }
 
+/* Top-level "books" stand out from their sub-pages: a coloured left stripe
+   (one colour per book), a faint shade, bolder + slightly larger title. */
+.page-row-root {
+  margin-top: 0.35rem;
+  border-left: 3px solid var(--book-color, var(--border));
+}
+
+.page-row-root:not(.page-row-active) {
+  background: var(--bg);
+}
+
+.page-row-root .page-item {
+  font-weight: 600;
+  font-size: 1rem;
+}
+
 .page-caret {
   flex-shrink: 0;
   width: 1.2rem;
@@ -653,20 +669,15 @@ h1 {
   border-radius: 8px;
 }
 
-/* Markdown import */
-.import-trigger {
-  font: inherit;
-  font-size: 0.85rem;
+/* Markdown import: a compact icon button next to the "+" in the create row
+   (it's used rarely, so it shouldn't take a whole row of its own). */
+.page-create .page-import-btn {
+  background: var(--surface);
   color: var(--text-muted);
-  background: none;
-  border: 1px dashed var(--border);
-  border-radius: 8px;
-  padding: 0.4rem 0.6rem;
-  cursor: pointer;
-  text-align: left;
+  border: 1px solid var(--border);
 }
 
-.import-trigger:hover {
+.page-create .page-import-btn:hover {
   color: var(--accent);
   border-color: var(--accent);
   background: var(--accent-soft);
@@ -1450,6 +1461,7 @@ h1 {
 
 .inbox-item {
   display: flex;
+  flex-wrap: wrap;
   align-items: flex-start;
   gap: 0.5rem;
   padding: 0.55rem 0.7rem;
@@ -1470,6 +1482,12 @@ h1 {
   flex: 1;
   white-space: pre-wrap;
   word-break: break-word;
+  /* Size the box to the text but cap it at 6 lines, then truncate with "...".
+     The capped height drives how many action buttons the rail shows. */
+  display: -webkit-box;
+  -webkit-line-clamp: 6;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
 
 .inbox-item-stamp {
@@ -1513,16 +1531,40 @@ h1 {
 }
 
 .inbox-item-actions {
+  position: relative;
   display: flex;
   flex-direction: column;
   gap: 0.3rem;
   flex-shrink: 0;
 }
 
+/* Wrapper that carries a React key without taking part in layout, so each
+   action button keeps its own fixed size in the column. */
+.inbox-action-slot {
+  display: contents;
+}
+
 .inbox-delete-confirm {
   display: flex;
   flex-direction: column;
   gap: 0.3rem;
+}
+
+/* Overflow popover: the buttons that didn't fit, floated just left of the
+   rail so they don't push the item taller. */
+.inbox-overflow-panel {
+  position: absolute;
+  top: 0;
+  right: calc(100% + 0.3rem);
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  padding: 0.3rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.12);
+  z-index: 20;
 }
 
 /* Small square icon buttons for the inbox rail. Same look as the copy/move/
@@ -1958,11 +2000,20 @@ h1 {
 
 .idea-modal-footer {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
   gap: 0.6rem;
   padding: 0.85rem 1.25rem;
   border-top: 1px solid var(--border);
+}
+
+/* A failure message that drops onto its own full-width line below the action
+   buttons / icon rail (reused by the idea + inbox ✉ buttons). */
+.email-inline-error {
+  flex-basis: 100%;
+  width: 100%;
+  margin: 0.3rem 0 0;
 }
 
 .delete-idea {
