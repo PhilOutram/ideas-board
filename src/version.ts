@@ -1,4 +1,4 @@
-export const VERSION = 'v0.32'
+export const VERSION = 'v0.33'
 
 export type ChangelogEntry = {
   version: string
@@ -9,6 +9,13 @@ export type ChangelogEntry = {
 // Newest first. Bump VERSION and add an entry here on every commit so
 // the deployed build always shows exactly what shipped.
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: 'v0.33',
+    date: '2026-07-05',
+    notes: [
+      'The voice-capture de-duplication fix announced in v0.31 is now actually in the deployed build. The code that implements it had been left uncommitted, so until this build the transcript could still stack a repeated phrase over and over. It now genuinely rebuilds the transcript from the browser\'s results each time and keeps each spoken phrase once.',
+    ],
+  },
   {
     version: 'v0.32',
     date: '2026-07-03',

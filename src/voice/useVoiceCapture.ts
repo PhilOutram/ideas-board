@@ -68,6 +68,34 @@ function joinText(a: string, b: string): string {
   return `${a} ${b}`.replace(/\s+/g, ' ').trim()
 }
 
+// Collapse a list of final segments, merging any segment that is just a longer
+// re-statement of the one before it. Chrome (especially Android) re-reports a
+// phrase as it grows by emitting each longer version as a *final* result, often
+// at a new index: "okay", "okay here's", "okay here's my"... We keep only the
+// longest of each such run. Segments with no prefix relationship are genuinely
+// distinct and are all preserved. This is the de-duplication; doing it here -
+// over the whole list each event - is what makes it robust to multiple growing
+// segments in one session (the case the old per-string merge stacked instead).
+function collapseGrowth(segments: string[]): string[] {
+  const out: string[] = []
+  for (const raw of segments) {
+    const seg = raw.trim()
+    if (!seg) continue
+    const prev = out[out.length - 1]
+    if (prev) {
+      const prevLower = prev.toLowerCase()
+      const segLower = seg.toLowerCase()
+      if (segLower.startsWith(prevLower)) {
+        out[out.length - 1] = seg // grew from the previous segment - replace it
+        continue
+      }
+      if (prevLower.startsWith(segLower)) continue // shorter re-statement - drop
+    }
+    out.push(seg)
+  }
+  return out
+}
+
 // Default to en-GB to match the user's locale (UK date formatting elsewhere).
 export function useVoiceCapture(lang = 'en-GB'): UseVoiceCapture {
   const [supported] = useState(() => getCtor() !== null)
@@ -81,34 +109,12 @@ export function useVoiceCapture(lang = 'en-GB'): UseVoiceCapture {
   // stale state value. Drives the auto-restart-on-end behaviour below.
   const wantListeningRef = useRef(false)
 
-  // Android Chrome re-reports a phrase as it grows, emitting each longer
-  // version as a *final* result (often at a new index): "okay" then
-  // "okay here's" then "okay here's my"... Appending or index-keying both
-  // duplicate. So we track the current session's final text as ONE string
-  // and merge each incoming final: if it extends what we have, replace
-  // (cumulative growth); if it's genuinely new, append. `committedRef` holds
-  // text from earlier sessions (the engine resets between auto-restarts).
+  // `committedRef` holds finalized text from earlier sessions: the engine
+  // wipes its `results` list between our auto-restarts, so onend folds each
+  // finished session into it. `sessionFinalRef` holds the current session's
+  // final text, which onresult rebuilds from scratch every event (see there).
   const committedRef = useRef('') // finalized text from previous sessions
-  const sessionFinalRef = useRef('') // this session's merged final text
-
-  const mergeFinal = useCallback((incoming: string) => {
-    const next = incoming.trim()
-    if (!next) return
-    const prev = sessionFinalRef.current
-    if (!prev) {
-      sessionFinalRef.current = next
-      return
-    }
-    const prevLower = prev.toLowerCase()
-    const nextLower = next.toLowerCase()
-    if (nextLower.startsWith(prevLower)) {
-      sessionFinalRef.current = next // cumulative growth - replace
-    } else if (prevLower.startsWith(nextLower)) {
-      // shorter restatement of what we already have - ignore
-    } else {
-      sessionFinalRef.current = joinText(prev, next) // a new segment - append
-    }
-  }, [])
+  const sessionFinalRef = useRef('') // this session's final text, rebuilt per event
 
   const composeFinal = useCallback(() => {
     return joinText(committedRef.current, sessionFinalRef.current)
@@ -146,18 +152,27 @@ export function useVoiceCapture(lang = 'en-GB'): UseVoiceCapture {
     rec.interimResults = true
 
     rec.onresult = (event) => {
+      // Rebuild from the full results list every event rather than appending
+      // deltas. `event.results` is the engine's authoritative, index-stable
+      // record for this session, so walking it from 0 is idempotent no matter
+      // how Chrome batches, re-orders or re-reports results - which is what
+      // makes the de-duplication reliable. (Appending each incoming final, as
+      // we used to, stacked the whole growing phrase once a session produced
+      // more than one segment - the intermittent duplication bug.)
+      const finals: string[] = []
       let interimChunk = ''
-      for (let i = event.resultIndex; i < event.results.length; i++) {
+      for (let i = 0; i < event.results.length; i++) {
         const result = event.results[i]
         const text = result[0]?.transcript ?? ''
         if (result.isFinal) {
-          mergeFinal(text)
+          finals.push(text)
         } else {
           interimChunk += text
         }
       }
+      sessionFinalRef.current = collapseGrowth(finals).join(' ')
       setTranscript(composeFinal())
-      setInterim(interimChunk.trim())
+      setInterim(interimChunk.replace(/\s+/g, ' ').trim())
     }
 
     rec.onerror = (event) => {
@@ -215,7 +230,7 @@ export function useVoiceCapture(lang = 'en-GB'): UseVoiceCapture {
       // Calling start() too soon after a previous run can throw; onend's
       // restart path will recover, so just ignore here.
     }
-  }, [lang, composeFinal, mergeFinal])
+  }, [lang, composeFinal])
 
   // Abort cleanly if the component unmounts mid-capture.
   useEffect(() => {
