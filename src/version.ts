@@ -1,4 +1,4 @@
-export const VERSION = 'v0.30'
+export const VERSION = 'v0.32'
 
 export type ChangelogEntry = {
   version: string
@@ -9,6 +9,21 @@ export type ChangelogEntry = {
 // Newest first. Bump VERSION and add an entry here on every commit so
 // the deployed build always shows exactly what shipped.
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: 'v0.32',
+    date: '2026-07-03',
+    notes: [
+      'Dictate straight into an idea: open an idea and each box (Messy, Tidy, Context, Memory, and any board you added) now has a 🎤 mic. Tap it, speak, and tap it again to drop what you said onto the end of that box. A live preview shows the words forming while you talk, and only one box records at a time.',
+      'Dictation keeps the phone screen awake while recording, the same as the full voice capture, so a sleeping screen no longer cuts you off.',
+    ],
+  },
+  {
+    version: 'v0.31',
+    date: '2026-06-21',
+    notes: [
+      'Voice capture duplication fixed at the root: when a recording paused and then carried on, the transcript could stack the whole growing phrase over and over ("...assert him" then "...assert him or" then "...assert him or you\'re"...). The transcript is now rebuilt from the browser\'s own results each time and de-duplicated across every phrase in the session, so each spoken phrase is saved exactly once.',
+    ],
+  },
   {
     version: 'v0.30',
     date: '2026-06-20',

@@ -9,6 +9,8 @@ import { useSettings } from '../settings/SettingsContext'
 import { sendForwardEmail } from '../lib/email'
 import type { Page } from '../pages/usePages'
 import { buildTree, type PageTreeNode } from '../pages/pageTree'
+import { useVoiceCapture } from '../voice/useVoiceCapture'
+import { useWakeLock } from '../voice/useWakeLock'
 
 type Props = {
   idea: Idea
@@ -49,6 +51,44 @@ export default function IdeaModal({
 
   const [emailError, setEmailError] = useState<string | null>(null)
 
+  // Dictation: one shared recognizer for the whole idea, plus which board (if
+  // any) is currently capturing. Only one board records at a time.
+  const voice = useVoiceCapture()
+  const { listening, transcript, interim } = voice
+  const [micKey, setMicKey] = useState<string | null>(null)
+
+  // Hold the screen on while dictating so a phone sleeping doesn't cut the mic.
+  useWakeLock(listening)
+
+  // When a board's dictation ends (the user hit its mic again, or an error
+  // stopped it), append the finalized transcript to that board and leave record
+  // mode. The persisted board value is the base, so a whole spoken note lands
+  // after whatever was already there. An error ends recording with no
+  // transcript, so nothing is appended but the error banner still shows.
+  useEffect(() => {
+    if (!micKey || listening) return
+    const spoken = transcript.trim()
+    if (spoken) {
+      const existing = idea.boards[micKey] ?? ''
+      onUpdateBoard(micKey, existing ? `${existing}\n${spoken}` : spoken)
+    }
+    setMicKey(null)
+  }, [micKey, listening, transcript, idea.boards, onUpdateBoard])
+
+  // Toggle the mic for a board. Clicking the recording board's mic stops it;
+  // clicking a board's mic while nothing records starts a fresh session there.
+  // Other boards' mics are disabled while one records, so this never races over
+  // where the transcript lands.
+  function toggleMic(key: string) {
+    if (micKey === key) {
+      voice.stop()
+    } else if (!micKey) {
+      voice.reset()
+      setMicKey(key)
+      voice.start()
+    }
+  }
+
   const customKeys = Object.keys(idea.boards).filter(
     (k) => !DEFAULT_BOARDS.includes(k as (typeof DEFAULT_BOARDS)[number]),
   )
@@ -76,6 +116,20 @@ export default function IdeaModal({
         </header>
 
         <div className="modal-body">
+          {voice.error && (
+            <div className="auth-error voice-error" role="alert">
+              <span>{voice.error}</span>
+              <button
+                type="button"
+                className="voice-error-close"
+                onClick={voice.reset}
+                aria-label="Dismiss this message"
+              >
+                ×
+              </button>
+            </div>
+          )}
+
           {orderedKeys.map((key) => (
             <Fragment key={key}>
               {/* Inherited memory sits directly above this idea's own Memory
@@ -87,6 +141,11 @@ export default function IdeaModal({
                 label={labelForBoard(key)}
                 value={idea.boards[key] ?? ''}
                 onSave={(value) => onUpdateBoard(key, value)}
+                micSupported={voice.supported}
+                recording={micKey === key}
+                micDisabled={micKey !== null && micKey !== key}
+                liveText={micKey === key ? joinLive(transcript, interim) : ''}
+                onToggleMic={() => toggleMic(key)}
               />
             </Fragment>
           ))}
@@ -159,13 +218,48 @@ type BoardProps = {
   label: string
   value: string
   onSave: (v: string) => void
+  micSupported: boolean
+  recording: boolean
+  micDisabled: boolean
+  liveText: string
+  onToggleMic: () => void
 }
 
-function BoardEditor({ label, value, onSave }: BoardProps) {
+// Join finalized transcript and live interim words on a single space for the
+// dictation preview, collapsing any stray whitespace.
+function joinLive(transcript: string, interim: string): string {
+  return `${transcript} ${interim}`.replace(/\s+/g, ' ').trim()
+}
+
+function BoardEditor({
+  label,
+  value,
+  onSave,
+  micSupported,
+  recording,
+  micDisabled,
+  liveText,
+  onToggleMic,
+}: BoardProps) {
   const { draft, onChange, flush } = useDebouncedField(value, onSave)
   return (
     <section className="board-editor">
-      <label className="board-label">{label}</label>
+      <div className="board-head">
+        <label className="board-label">{label}</label>
+        {micSupported && (
+          <button
+            type="button"
+            className={`board-mic${recording ? ' board-mic-recording' : ''}`}
+            onClick={onToggleMic}
+            disabled={micDisabled}
+            aria-pressed={recording}
+            aria-label={recording ? `Stop dictation into ${label}` : `Dictate into ${label}`}
+            title={recording ? 'Stop dictation' : 'Add a note by voice'}
+          >
+            {recording ? <span className="voice-pulse" aria-hidden="true" /> : '🎤'}
+          </button>
+        )}
+      </div>
       <textarea
         className="board-textarea"
         value={draft}
@@ -174,6 +268,23 @@ function BoardEditor({ label, value, onSave }: BoardProps) {
         onBlur={flush}
         rows={3}
       />
+      {recording && (
+        <div className="board-dictation" aria-live="polite">
+          <span className="voice-recording">
+            <span className="voice-pulse" aria-hidden="true" /> Listening...
+          </span>
+          <p className="voice-live-text">
+            {liveText ? (
+              <>
+                {liveText}
+                <span className="muted"> - added when you stop</span>
+              </>
+            ) : (
+              <span className="muted">Start speaking...</span>
+            )}
+          </p>
+        </div>
+      )}
     </section>
   )
 }

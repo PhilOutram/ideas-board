@@ -1894,6 +1894,63 @@ h1 {
   box-shadow: 0 0 0 3px var(--accent-soft);
 }
 
+/* Board label + per-board dictation mic sit on one row above the textarea. */
+.board-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.board-mic {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.9rem;
+  height: 1.9rem;
+  margin-bottom: 0.35rem;
+  font-size: 0.95rem;
+  line-height: 1;
+  background: var(--surface);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: border-color 120ms ease, background 120ms ease;
+}
+
+.board-mic:hover:not(:disabled) {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.board-mic:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+/* While recording, the mic reads as a live "stop" control. */
+.board-mic-recording,
+.board-mic-recording:hover:not(:disabled) {
+  border-color: var(--danger);
+  background: var(--accent-soft);
+}
+
+/* Live transcript preview under the textarea being dictated into. */
+.board-dictation {
+  margin-top: 0.4rem;
+  padding: 0.5rem 0.6rem;
+  background: var(--bg);
+  border: 1px dashed var(--border);
+  border-radius: 8px;
+}
+
+.board-dictation .voice-live-text {
+  margin: 0.3rem 0 0;
+  font-size: 0.95rem;
+}
+
 /* Inherited memory: read-only, visibly upstream of the editable Memory board */
 .inherited-memory {
   margin-top: 1rem;
