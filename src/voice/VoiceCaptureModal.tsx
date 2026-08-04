@@ -4,7 +4,8 @@ import { useWakeLock } from './useWakeLock'
 import { callAi } from '../ai/aiClient'
 import { DEFAULT_THOUGHTS_PROMPT } from '../ai/prompts'
 import { useSettings } from '../settings/SettingsContext'
-import { sendForwardEmail, subjectFromNote } from '../lib/email'
+import { sendForwardEmail, subjectFromNote, toEmailError, type EmailError } from '../lib/email'
+import EmailErrorNotice from '../components/EmailErrorNotice'
 
 type SaveAction = (text: string) => Promise<void> | void
 
@@ -49,7 +50,7 @@ export default function VoiceCaptureModal({
   // Email is a "fire to work" side-action: unlike the four save buttons it
   // does NOT close the modal, so the note can still also be saved somewhere.
   const [emailState, setEmailState] = useState<'idle' | 'sending' | 'sent' | 'failed'>('idle')
-  const [emailError, setEmailError] = useState<string | null>(null)
+  const [emailError, setEmailError] = useState<EmailError | null>(null)
 
   const [editingPrompt, setEditingPrompt] = useState(false)
   const [promptDraft, setPromptDraft] = useState('')
@@ -193,9 +194,13 @@ export default function VoiceCaptureModal({
       window.setTimeout(() => setEmailState('idle'), 2500)
     } catch (err) {
       console.error('Email action failed:', err)
+      const e = toEmailError(err)
       setEmailState('failed')
-      setEmailError(err instanceof Error ? err.message : 'Could not send the email.')
-      window.setTimeout(() => setEmailState('idle'), 2500)
+      setEmailError(e)
+      // Actionable errors stay put until the user acts; transient ones fade.
+      if (e.kind !== 'reauth' && e.kind !== 'signed-out' && e.kind !== 'config') {
+        window.setTimeout(() => setEmailState('idle'), 2500)
+      }
     }
   }
 
@@ -459,7 +464,12 @@ export default function VoiceCaptureModal({
                       : '✉️ Email to work'}
               </button>
             </div>
-            {emailError && <p className="ai-error voice-email-error">{emailError}</p>}
+            <EmailErrorNotice
+              error={emailError}
+              onRetry={doEmail}
+              retrying={emailState === 'sending'}
+              className="voice-email-error"
+            />
             <div className="voice-actions-secondary">
               {supported && (
                 <button type="button" className="voice-record" onClick={recordAgain}>

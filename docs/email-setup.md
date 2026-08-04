@@ -201,7 +201,8 @@ can't email another. Not needed while it's just you.
 | Button says "Set a forward email in Settings first" | No work address saved | ⚙ Settings → add it |
 | "Email is not configured yet (missing EMAILJS_* env vars)" | A Vercel variable is missing/misnamed | Re-check section 5a, then redeploy |
 | "Email guard is not configured (missing FIREBASE_API_KEY)" | That one variable isn't set | Add `FIREBASE_API_KEY` (same value as `VITE_FIREBASE_API_KEY`), redeploy |
-| "Not authorised." | Sign-in token rejected | Sign out and back in; confirm `FIREBASE_API_KEY` is correct |
+| "We couldn't verify your sign-in..." (was "Not authorised.") | Sign-in token rejected by the server. The app now auto-refreshes the token once before showing this, so a stale token is already ruled out | Click **Re-authorise & retry**; if it still fails, **Sign in again**. If it *still* fails right after a fresh sign-in, it's server-side (next two rows) |
+| Still "not authorised" after re-signing in | `FIREBASE_API_KEY` on Vercel is missing/wrong, **or** the Firebase API key has Google Cloud **application restrictions (HTTP referrers)** - browser calls pass, but the server function's referrer-less call is blocked | 1) Vercel → confirm `FIREBASE_API_KEY` == `VITE_FIREBASE_API_KEY`. 2) Google Cloud Console → APIs & Services → Credentials → that API key → set **Application restrictions = None** (or add the Vercel domain), and ensure **Identity Toolkit API** is allowed. Then redeploy |
 | EmailJS error mentioning "non-browser" / "API calls disabled" | The section 4c toggle is off | Turn on "Allow EmailJS API for non-browser applications" |
 | Email sends but body/subject is blank | Template placeholders don't match | They must be `{{to_email}}`, `{{subject}}`, `{{message}}` |
 | Nothing arrives, no error | Check spam; confirm the template **To Email** = `{{to_email}}` | - |

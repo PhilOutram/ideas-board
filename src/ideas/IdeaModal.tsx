@@ -6,7 +6,8 @@ import { buildIdeaExport, buildIdeaCard } from './exportForChat'
 import CopyButton from '../components/CopyButton'
 import { useDebouncedField } from '../lib/useDebouncedField'
 import { useSettings } from '../settings/SettingsContext'
-import { sendForwardEmail } from '../lib/email'
+import { sendForwardEmail, toEmailError, type EmailError } from '../lib/email'
+import EmailErrorNotice from '../components/EmailErrorNotice'
 import type { Page } from '../pages/usePages'
 import { buildTree, type PageTreeNode } from '../pages/pageTree'
 import { useVoiceCapture } from '../voice/useVoiceCapture'
@@ -49,7 +50,32 @@ export default function IdeaModal({
     return () => window.removeEventListener('keydown', onKey)
   }, [onClose])
 
-  const [emailError, setEmailError] = useState<string | null>(null)
+  const { forwardEmail } = useSettings()
+  const [emailError, setEmailError] = useState<EmailError | null>(null)
+  const [emailState, setEmailState] = useState<'idle' | 'sending' | 'sent' | 'failed'>('idle')
+
+  // Email the whole idea (title + its non-empty boards) to the configured work
+  // address. Lives in the parent so the re-authorise retry (from the error
+  // notice) and the ✉ button share one send path.
+  async function sendIdeaEmail() {
+    if (!forwardEmail) return
+    setEmailError(null)
+    setEmailState('sending')
+    try {
+      const subject = idea.title ? `Idea: ${idea.title}` : 'Idea'
+      await sendForwardEmail({ to: forwardEmail, subject, text: buildIdeaCard(idea) })
+      setEmailState('sent')
+      window.setTimeout(() => setEmailState('idle'), 2500)
+    } catch (err) {
+      const e = toEmailError(err)
+      setEmailState('failed')
+      setEmailError(e)
+      // Actionable errors stay put until the user acts; transient ones fade.
+      if (e.kind !== 'reauth' && e.kind !== 'signed-out' && e.kind !== 'config') {
+        window.setTimeout(() => setEmailState('idle'), 2500)
+      }
+    }
+  }
 
   // Dictation: one shared recognizer for the whole idea, plus which board (if
   // any) is currently capturing. Only one board records at a time.
@@ -161,9 +187,9 @@ export default function IdeaModal({
             getText={() => buildIdeaExport(page, idea)}
           />
           <EmailIdeaButton
-            subject={idea.title ? `Idea: ${idea.title}` : 'Idea'}
-            getBody={() => buildIdeaCard(idea)}
-            onError={setEmailError}
+            forwardEmail={forwardEmail}
+            state={emailState}
+            onSend={sendIdeaEmail}
           />
           <MoveIdeaButton
             pages={pages}
@@ -172,9 +198,12 @@ export default function IdeaModal({
             onClose={onClose}
           />
           <DeleteIdeaButton onDelete={onDelete} onClose={onClose} />
-          {emailError && (
-            <p className="ai-error email-inline-error" role="alert">{emailError}</p>
-          )}
+          <EmailErrorNotice
+            error={emailError}
+            onRetry={sendIdeaEmail}
+            retrying={emailState === 'sending'}
+            className="email-notice-idea"
+          />
         </footer>
       </div>
     </div>
@@ -356,36 +385,19 @@ function AddBoard({
   )
 }
 
-// Email the whole idea (title + its non-empty boards) to the user's configured
-// work address. Reads forwardEmail from settings; disabled with a hint if none
-// is set. Shows a transient ✓/✗, reports any failure message to the parent via
-// onError (shown inline under the footer), and does not close the modal.
+// The ✉ button that emails the whole idea to the configured work address. The
+// send itself lives in the parent (so the error notice's re-authorise retry
+// shares the same path); this is just the button + transient ✓/✗ glyph. It's
+// disabled with a hint when no forward address is set.
 function EmailIdeaButton({
-  subject,
-  getBody,
-  onError,
+  forwardEmail,
+  state,
+  onSend,
 }: {
-  subject: string
-  getBody: () => string
-  onError: (message: string | null) => void
+  forwardEmail: string
+  state: 'idle' | 'sending' | 'sent' | 'failed'
+  onSend: () => void
 }) {
-  const { forwardEmail } = useSettings()
-  const [state, setState] = useState<'idle' | 'sending' | 'sent' | 'failed'>('idle')
-
-  async function handleEmail() {
-    if (!forwardEmail) return
-    onError(null)
-    setState('sending')
-    try {
-      await sendForwardEmail({ to: forwardEmail, subject, text: getBody() })
-      setState('sent')
-    } catch (err) {
-      setState('failed')
-      onError(err instanceof Error ? err.message : 'Could not send the email.')
-    }
-    window.setTimeout(() => setState('idle'), 2500)
-  }
-
   const glyph =
     state === 'sent' ? '✓' : state === 'failed' ? '✗' : state === 'sending' ? '…' : '✉️'
 
@@ -393,7 +405,7 @@ function EmailIdeaButton({
     <button
       type="button"
       className="email-idea email-idea-icon"
-      onClick={handleEmail}
+      onClick={onSend}
       disabled={!forwardEmail || state === 'sending'}
       aria-label={forwardEmail ? `Email idea to ${forwardEmail}` : 'Set a forward email in Settings'}
       title={forwardEmail ? `Email idea to ${forwardEmail}` : 'Set a forward email in Settings'}

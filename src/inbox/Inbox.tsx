@@ -12,7 +12,8 @@ import VoiceCaptureModal from '../voice/VoiceCaptureModal'
 import { makeIdeaTitle } from '../ai/aiClient'
 import CopyButton from '../components/CopyButton'
 import { useSettings } from '../settings/SettingsContext'
-import { sendForwardEmail, subjectFromNote } from '../lib/email'
+import { sendForwardEmail, subjectFromNote, toEmailError, type EmailError } from '../lib/email'
+import EmailErrorNotice from '../components/EmailErrorNotice'
 import { useQuickIdeas, type QuickIdea } from './useQuickIdeas'
 
 type Props = {
@@ -149,7 +150,7 @@ function InboxItem({ item, forwardEmail, onPromote, onSaveEdit, onDelete }: Item
   const [draft, setDraft] = useState(item.text)
   const [confirmingDelete, setConfirmingDelete] = useState(false)
   const [emailState, setEmailState] = useState<'idle' | 'sending' | 'sent' | 'failed'>('idle')
-  const [emailError, setEmailError] = useState<string | null>(null)
+  const [emailError, setEmailError] = useState<EmailError | null>(null)
   const [overflowOpen, setOverflowOpen] = useState(false)
   // How many action buttons the body is tall enough to show (1..4). The box is
   // sized to its text (up to 6 lines), so a one-line note shows a single "..."
@@ -222,11 +223,17 @@ function InboxItem({ item, forwardEmail, onPromote, onSaveEdit, onDelete }: Item
         text: item.text,
       })
       setEmailState('sent')
+      window.setTimeout(() => setEmailState('idle'), 2500)
     } catch (err) {
+      const e = toEmailError(err)
       setEmailState('failed')
-      setEmailError(err instanceof Error ? err.message : 'Could not send the email.')
+      setEmailError(e)
+      // Actionable errors (re-authorise / server setup) keep the ✗ and notice
+      // up until the user acts; transient ones fade back to the ✉ glyph.
+      if (e.kind !== 'reauth' && e.kind !== 'signed-out' && e.kind !== 'config') {
+        window.setTimeout(() => setEmailState('idle'), 2500)
+      }
     }
-    window.setTimeout(() => setEmailState('idle'), 2500)
   }
 
   const emailGlyph =
@@ -378,9 +385,12 @@ function InboxItem({ item, forwardEmail, onPromote, onSaveEdit, onDelete }: Item
         )}
       </div>
 
-      {emailError && (
-        <p className="ai-error email-inline-error" role="alert">{emailError}</p>
-      )}
+      <EmailErrorNotice
+        error={emailError}
+        onRetry={forward}
+        retrying={emailState === 'sending'}
+        className="email-notice-inbox"
+      />
     </li>
   )
 }
