@@ -16,22 +16,51 @@ type ResLike = {
 const EMAILJS_ENDPOINT = 'https://api.emailjs.com/api/v1.0/email/send'
 const LOOKUP_ENDPOINT = 'https://identitytoolkit.googleapis.com/v1/accounts:lookup'
 
+// Why a token verification failed. 'invalid-token' is a genuine auth failure
+// (re-sign-in may help); 'key-restricted' means Google rejected the API key
+// itself - almost always an HTTP-referrer / API restriction that blocks this
+// referrer-less server call (signing in won't help); 'unreachable' is a
+// transient network problem talking to Google.
+type VerifyReason = 'invalid-token' | 'key-restricted' | 'unreachable'
+type VerifyResult = { ok: true } | { ok: false; reason: VerifyReason; detail?: string }
+
+// Case-insensitive markers in Google's error message that mean "the key was
+// rejected" rather than "the token was bad".
+const KEY_BLOCK_MARKERS = /referer|blocked|api key|permission|forbidden/i
+
 // Verify the caller's Firebase ID token so this endpoint can't be abused as an
 // open email relay. Uses the (public) Firebase API key + the Identity Toolkit
-// REST API, so no firebase-admin dependency is needed. Returns true if valid.
-async function verifyIdToken(idToken: string, apiKey: string): Promise<boolean> {
+// REST API, so no firebase-admin dependency is needed. Returns a typed result
+// so the handler can tell a blocked key apart from a genuinely bad token and
+// give a precise, actionable message.
+async function verifyIdToken(idToken: string, apiKey: string): Promise<VerifyResult> {
+  let r: Response
   try {
-    const r = await fetch(`${LOOKUP_ENDPOINT}?key=${apiKey}`, {
+    r = await fetch(`${LOOKUP_ENDPOINT}?key=${apiKey}`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ idToken }),
     })
-    if (!r.ok) return false
-    const data = (await r.json()) as { users?: unknown[] }
-    return Array.isArray(data.users) && data.users.length > 0
   } catch {
-    return false
+    return { ok: false, reason: 'unreachable' }
   }
+
+  if (r.ok) {
+    const data = (await r.json()) as { users?: unknown[] }
+    if (Array.isArray(data.users) && data.users.length > 0) return { ok: true }
+    return { ok: false, reason: 'invalid-token' }
+  }
+
+  // Non-2xx: read Google's error to distinguish a blocked key from a bad token.
+  let message = ''
+  try {
+    const body = (await r.json()) as { error?: { message?: string } }
+    message = body.error?.message ?? ''
+  } catch {
+    // No JSON body - fall back to the status code below.
+  }
+  const blocked = r.status === 403 || KEY_BLOCK_MARKERS.test(message)
+  return { ok: false, reason: blocked ? 'key-restricted' : 'invalid-token', detail: message }
 }
 
 function isEmail(value: string): boolean {
@@ -85,8 +114,25 @@ export default async function handler(req: ReqLike, res: ResLike) {
     return
   }
 
-  const authed = await verifyIdToken(idToken, firebaseApiKey)
-  if (!authed) {
+  const verdict = await verifyIdToken(idToken, firebaseApiKey)
+  if (!verdict.ok) {
+    if (verdict.reason === 'key-restricted') {
+      // Surfaced (and logged) so the cause is unambiguous: it's the server
+      // guard's API key being rejected by Google, not the user's sign-in.
+      console.warn('Email guard: FIREBASE_API_KEY rejected by Google:', verdict.detail)
+      res.status(500).json({
+        error:
+          'Email guard blocked: the server\'s FIREBASE_API_KEY is being rejected by Google, ' +
+          'usually an HTTP-referrer or API restriction on the key. In Google Cloud Console, ' +
+          'set that key\'s Application restrictions to None (or add the deploy domain) and ' +
+          'allow the Identity Toolkit API, then redeploy.',
+      })
+      return
+    }
+    if (verdict.reason === 'unreachable') {
+      res.status(502).json({ error: 'Could not reach the sign-in verifier. Try again shortly.' })
+      return
+    }
     res.status(401).json({ error: 'Not authorised.' })
     return
   }
