@@ -1,11 +1,14 @@
 import { useEffect } from 'react'
 import { CHANGELOG } from '../version'
+import { useOverlayDismiss } from '../lib/useOverlayDismiss'
 
 type Props = {
   onClose: () => void
 }
 
 export default function ChangelogModal({ onClose }: Props) {
+  const dismiss = useOverlayDismiss(onClose)
+
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
       if (e.key === 'Escape') onClose()
@@ -15,7 +18,7 @@ export default function ChangelogModal({ onClose }: Props) {
   }, [onClose])
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
+    <div className="modal-overlay" {...dismiss}>
       <div
         className="modal-card changelog-modal"
         role="dialog"

@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useState, type FormEvent } from 'react'
+import { Fragment, useEffect, useRef, useState, type FormEvent } from 'react'
 import type { Idea } from './useIdeas'
 import { boardKeyFromName } from './useIdeas'
 import type { MemorySource } from './inheritance'
@@ -12,6 +12,8 @@ import type { Page } from '../pages/usePages'
 import { buildTree, type PageTreeNode } from '../pages/pageTree'
 import { useVoiceCapture } from '../voice/useVoiceCapture'
 import { useWakeLock } from '../voice/useWakeLock'
+import { spliceDictation, useCaretTracker } from '../voice/dictationInsert'
+import { useOverlayDismiss } from '../lib/useOverlayDismiss'
 
 type Props = {
   idea: Idea
@@ -30,6 +32,14 @@ type Props = {
 // boards map is a custom board and renders after them, in insertion order.
 const DEFAULT_BOARDS = ['messy', 'tidy', 'context', 'memory'] as const
 
+// Grace period after dictation stops before its words are taken as final - the
+// tail of a phrase can land a tick after the engine reports it has stopped.
+const DICTATION_SETTLE_MS = 200
+
+// A finished chunk of dictation on its way into one board. The sequence number
+// is what tells the board this is new speech rather than a re-render.
+type Dictation = { key: string; text: string; seq: number }
+
 export default function IdeaModal({
   idea,
   page,
@@ -42,6 +52,8 @@ export default function IdeaModal({
   onDelete,
   onClose,
 }: Props) {
+  const dismiss = useOverlayDismiss(onClose)
+
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
       if (e.key === 'Escape') onClose()
@@ -82,24 +94,28 @@ export default function IdeaModal({
   const voice = useVoiceCapture()
   const { listening, transcript, interim } = voice
   const [micKey, setMicKey] = useState<string | null>(null)
+  const [dictated, setDictated] = useState<Dictation | null>(null)
+  const dictationSeq = useRef(0)
 
   // Hold the screen on while dictating so a phone sleeping doesn't cut the mic.
   useWakeLock(listening)
 
-  // When a board's dictation ends (the user hit its mic again, or an error
-  // stopped it), append the finalized transcript to that board and leave record
-  // mode. The persisted board value is the base, so a whole spoken note lands
-  // after whatever was already there. An error ends recording with no
-  // transcript, so nothing is appended but the error banner still shows.
+  // When a board's dictation ends (the user hit its mic again, the mic dropped
+  // out, or an error stopped it), hand the finalized words to that board, which
+  // splices them in wherever the caret was left. An error ends recording with
+  // no transcript, so nothing is inserted but the error banner still shows.
   useEffect(() => {
     if (!micKey || listening) return
-    const spoken = transcript.trim()
-    if (spoken) {
-      const existing = idea.boards[micKey] ?? ''
-      onUpdateBoard(micKey, existing ? `${existing}\n${spoken}` : spoken)
-    }
-    setMicKey(null)
-  }, [micKey, listening, transcript, idea.boards, onUpdateBoard])
+    const timer = window.setTimeout(() => {
+      const spoken = transcript.trim()
+      if (spoken) {
+        dictationSeq.current += 1
+        setDictated({ key: micKey, text: spoken, seq: dictationSeq.current })
+      }
+      setMicKey(null)
+    }, DICTATION_SETTLE_MS)
+    return () => window.clearTimeout(timer)
+  }, [micKey, listening, transcript])
 
   // Toggle the mic for a board. Clicking the recording board's mic stops it;
   // clicking a board's mic while nothing records starts a fresh session there.
@@ -121,7 +137,7 @@ export default function IdeaModal({
   const orderedKeys = [...DEFAULT_BOARDS, ...customKeys]
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
+    <div className="modal-overlay" {...dismiss}>
       <div
         className="modal-card idea-modal"
         role="dialog"
@@ -171,6 +187,7 @@ export default function IdeaModal({
                 recording={micKey === key}
                 micDisabled={micKey !== null && micKey !== key}
                 liveText={micKey === key ? joinLive(transcript, interim) : ''}
+                dictated={dictated?.key === key ? dictated : null}
                 onToggleMic={() => toggleMic(key)}
               />
             </Fragment>
@@ -251,6 +268,7 @@ type BoardProps = {
   recording: boolean
   micDisabled: boolean
   liveText: string
+  dictated: Dictation | null
   onToggleMic: () => void
 }
 
@@ -268,9 +286,23 @@ function BoardEditor({
   recording,
   micDisabled,
   liveText,
+  dictated,
   onToggleMic,
 }: BoardProps) {
   const { draft, onChange, flush } = useDebouncedField(value, onSave)
+  const caretTracker = useCaretTracker()
+  const appliedSeq = useRef(0)
+
+  // Land finished dictation where the caret was left rather than always on the
+  // end: a correction or an aside usually belongs part-way through the note. A
+  // box the user never clicked into still takes it at the end.
+  useEffect(() => {
+    if (!dictated || dictated.seq === appliedSeq.current) return
+    appliedSeq.current = dictated.seq
+    onChange(spliceDictation(draft, caretTracker.caret(draft), dictated.text))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dictated])
+
   return (
     <section className="board-editor">
       <div className="board-head">
@@ -283,13 +315,15 @@ function BoardEditor({
             disabled={micDisabled}
             aria-pressed={recording}
             aria-label={recording ? `Stop dictation into ${label}` : `Dictate into ${label}`}
-            title={recording ? 'Stop dictation' : 'Add a note by voice'}
+            title={recording ? 'Stop dictation' : 'Add a note by voice, at your cursor'}
           >
             {recording ? <span className="voice-pulse" aria-hidden="true" /> : '🎤'}
           </button>
         )}
       </div>
       <textarea
+        ref={caretTracker.ref}
+        onFocus={caretTracker.onFocus}
         className="board-textarea"
         value={draft}
         placeholder={`Nothing in ${label.toLowerCase()} yet...`}
@@ -306,7 +340,7 @@ function BoardEditor({
             {liveText ? (
               <>
                 {liveText}
-                <span className="muted"> - added when you stop</span>
+                <span className="muted"> - added at your cursor when you stop</span>
               </>
             ) : (
               <span className="muted">Start speaking...</span>
@@ -494,6 +528,7 @@ function PagePicker({
   onPick: (targetPageId: string) => void
   onCancel: () => void
 }) {
+  const dismiss = useOverlayDismiss(onCancel)
   const tree = buildTree(pages)
 
   const renderNodes = (nodes: PageTreeNode[], depth: number) =>
@@ -516,7 +551,7 @@ function PagePicker({
     ))
 
   return (
-    <div className="modal-overlay" onClick={onCancel}>
+    <div className="modal-overlay" {...dismiss}>
       <div
         className="modal-card move-picker"
         role="dialog"

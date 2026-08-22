@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { countNodes, parseMarkdownToTree, type ParsedNode } from './importMarkdown'
+import { useOverlayDismiss } from '../lib/useOverlayDismiss'
 
 type Props = {
   createPage: (title: string, parentId?: string | null, body?: string) => Promise<string>
@@ -22,6 +23,9 @@ export default function ImportModal({
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [fileName, setFileName] = useState<string | null>(null)
+  const dismiss = useOverlayDismiss(() => {
+    if (!busy) onClose()
+  })
 
   // Reading the file gives us the RAW markdown - no risk of copying rendered
   // text (which strips #, -, | and breaks the parser). Most reliable path.
@@ -81,7 +85,7 @@ export default function ImportModal({
     : `under "${defaultParentTitle || '(untitled)'}"`
 
   return (
-    <div className="modal-overlay" onClick={() => !busy && onClose()}>
+    <div className="modal-overlay" {...dismiss}>
       <div
         className="modal-card import-modal"
         role="dialog"

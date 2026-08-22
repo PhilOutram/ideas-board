@@ -1,9 +1,11 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { useVoiceCapture } from './useVoiceCapture'
 import { useWakeLock } from './useWakeLock'
+import { spliceDictation, useCaretTracker } from './dictationInsert'
 import { callAi } from '../ai/aiClient'
 import { DEFAULT_THOUGHTS_PROMPT } from '../ai/prompts'
 import { useSettings } from '../settings/SettingsContext'
+import { useOverlayDismiss } from '../lib/useOverlayDismiss'
 import { sendForwardEmail, subjectFromNote, toEmailError, type EmailError } from '../lib/email'
 import EmailErrorNotice from '../components/EmailErrorNotice'
 
@@ -20,6 +22,22 @@ type Props = {
   onClose: () => void
 }
 
+// Which box a resumed dictation is being spoken into, and where in it the new
+// words will land. The text either side of the caret is captured up front so a
+// later edit elsewhere in the box can't shift the insertion point.
+type Splice = { target: 'raw' | 'tidied'; label: string; before: string; after: string }
+
+// The modal is either capturing speech or reviewing what was captured. This is
+// deliberately NOT derived from `listening`: the mic can drop out mid-idea
+// (silence timeout, a network blip) and when it does we stay in capture with a
+// Resume button, instead of bouncing the user into review and tidying a
+// half-finished note.
+type Phase = 'capturing' | 'review'
+
+// Grace period after Stop before we take the transcript as final. The last
+// words of a session can land a tick late, via the engine's end event.
+const COMMIT_SETTLE_MS = 200
+
 export default function VoiceCaptureModal({
   onSaveIdea,
   onAddToInbox,
@@ -27,12 +45,21 @@ export default function VoiceCaptureModal({
   onAddToContext,
   onClose,
 }: Props) {
-  const { supported, listening, transcript, interim, error, start, stop, reset } = useVoiceCapture()
+  const { supported, listening, transcript, interim, error, droppedOut, start, stop, reset } =
+    useVoiceCapture()
   const { thoughtsPrompt, setThoughtsPrompt, forwardEmail } = useSettings()
+  const dismiss = useOverlayDismiss(onClose)
 
   // Hold the screen on while actively recording so the phone doesn't sleep
   // mid-capture (which would suspend the page and cut the mic).
   useWakeLock(listening)
+
+  const [phase, setPhase] = useState<Phase>(supported ? 'capturing' : 'review')
+  const [splice, setSplice] = useState<Splice | null>(null)
+  // True once the user has ended a capture and we're waiting for the last
+  // words to land. A drop-out leaves it false: nothing is committed and the
+  // capture stays open to be resumed.
+  const [pendingCommit, setPendingCommit] = useState(false)
 
   const [raw, setRaw] = useState('')
   const [tidied, setTidied] = useState('')
@@ -65,6 +92,8 @@ export default function VoiceCaptureModal({
   const startedRef = useRef(false)
   const recordedRef = useRef(false)
   const autoTidiedRef = useRef(false)
+  const rawCaret = useCaretTracker()
+  const tidiedCaret = useCaretTracker()
 
   async function runTidy(source: string, instruction?: string) {
     const text = source.trim()
@@ -103,12 +132,47 @@ export default function VoiceCaptureModal({
     }
   }, [supported, start, reset])
 
+  // End the capture and move to review once the transcript has settled. This
+  // is state rather than a ref because the mic may already have stopped on its
+  // own - the effect below has to re-run off the flag itself, not off a change
+  // in `listening`.
+  function endCapture() {
+    setPendingCommit(true)
+    stop()
+  }
+
+  // A fatal mic error (blocked microphone, no speech engine) can't be resumed,
+  // so fall through to review with whatever was captured - the user can type.
   useEffect(() => {
-    if (!listening && transcript && !raw) {
-      recordedRef.current = true
-      setRaw(transcript)
-    }
-  }, [listening, transcript, raw])
+    if (error && phase === 'capturing') setPendingCommit(true)
+  }, [error, phase])
+
+  useEffect(() => {
+    if (listening || !pendingCommit) return
+
+    // Re-running on every transcript change pushes this timer out, so the last
+    // words to arrive after Stop are the ones that get committed.
+    const timer = window.setTimeout(() => {
+      setPendingCommit(false)
+      const spoken = transcript.trim()
+      if (splice) {
+        const merged = spliceDictation(
+          `${splice.before}${splice.after}`,
+          splice.before.length,
+          spoken,
+        )
+        if (splice.target === 'raw') setRaw(merged)
+        else setTidied(merged)
+        setSplice(null)
+      } else if (spoken) {
+        recordedRef.current = true
+        setRaw(spoken)
+      }
+      setPhase('review')
+    }, COMMIT_SETTLE_MS)
+
+    return () => window.clearTimeout(timer)
+  }, [listening, transcript, splice, pendingCommit])
 
   useEffect(() => {
     if (raw && recordedRef.current && !autoTidiedRef.current) {
@@ -135,9 +199,30 @@ export default function VoiceCaptureModal({
     setIncludeThoughts(true)
     setKeepOriginal(false)
     setRefine('')
+    setSplice(null)
+    setPendingCommit(false)
     recordedRef.current = false
     autoTidiedRef.current = false
     reset()
+    setPhase('capturing')
+    start()
+  }
+
+  // Carry on the capture that dropped out. The hook keeps everything already
+  // transcribed, so this picks up exactly where the mic left off.
+  function resumeCapture() {
+    start()
+  }
+
+  // Dictate more into an existing box, landing at the caret. The hook is reset
+  // first so the transcript is purely the new words, which are then spliced in.
+  function dictateInto(target: 'raw' | 'tidied', label: string) {
+    const value = target === 'raw' ? raw : tidied
+    const at = target === 'raw' ? rawCaret.caret(value) : tidiedCaret.caret(value)
+    setSplice({ target, label, before: value.slice(0, at), after: value.slice(at) })
+    setPendingCommit(false)
+    reset()
+    setPhase('capturing')
     start()
   }
 
@@ -205,9 +290,13 @@ export default function VoiceCaptureModal({
   }
 
   const canSave = (tidied.trim() || raw.trim()).length > 0
+  const capturing = phase === 'capturing'
+  // Mic stopped on its own with the capture still open: offer Resume rather
+  // than treating the note as finished.
+  const paused = capturing && droppedOut && !listening
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
+    <div className="modal-overlay" {...dismiss}>
       <div
         className="modal-card voice-modal"
         role="dialog"
@@ -237,23 +326,54 @@ export default function VoiceCaptureModal({
             </div>
           )}
 
-          {listening ? (
+          {capturing ? (
             <div className="voice-live" aria-live="polite">
-              <div className="voice-recording">
-                <span className="voice-pulse" aria-hidden="true" />
-                Listening...
-              </div>
+              {splice && (
+                <p className="voice-splice-note muted">
+                  Adding to <strong>{splice.label}</strong> at your cursor.
+                </p>
+              )}
+              {!paused ? (
+                <div className="voice-recording">
+                  <span className="voice-pulse" aria-hidden="true" />
+                  Listening...
+                </div>
+              ) : (
+                <div className="voice-paused">
+                  <strong>Microphone paused.</strong> Everything you said is safe - hit Resume to
+                  carry on from where it stopped.
+                </div>
+              )}
               <p className="voice-live-text">
                 {transcript && <span>{transcript} </span>}
                 <span className="voice-interim">{interim}</span>
-                {!transcript && !interim && <span className="muted">Start speaking...</span>}
+                {!transcript && !interim && (
+                  <span className="muted">
+                    {paused ? 'Nothing captured yet.' : 'Start speaking...'}
+                  </span>
+                )}
               </p>
             </div>
           ) : (
             <>
               <section className="studio-section">
-                <label className="studio-label">What you said</label>
+                <div className="studio-section-head">
+                  <label className="studio-label">What you said</label>
+                  {supported && (
+                    <button
+                      type="button"
+                      className="board-mic"
+                      onClick={() => dictateInto('raw', 'What you said')}
+                      aria-label="Dictate more into what you said, at the cursor"
+                      title="Dictate more, inserted at your cursor"
+                    >
+                      🎤
+                    </button>
+                  )}
+                </div>
                 <textarea
+                  ref={rawCaret.ref}
+                  onFocus={rawCaret.onFocus}
                   className="voice-textarea"
                   value={raw}
                   placeholder="Speak, or type your idea here."
@@ -263,12 +383,27 @@ export default function VoiceCaptureModal({
               </section>
 
               <section className="studio-section">
-                <label className="studio-label">Tidied</label>
+                <div className="studio-section-head">
+                  <label className="studio-label">Tidied</label>
+                  {supported && tidied && !tidying && (
+                    <button
+                      type="button"
+                      className="board-mic"
+                      onClick={() => dictateInto('tidied', 'Tidied')}
+                      aria-label="Dictate more into the tidied text, at the cursor"
+                      title="Dictate more, inserted at your cursor"
+                    >
+                      🎤
+                    </button>
+                  )}
+                </div>
                 {tidying ? (
                   <p className="ai-status"><span className="spinner" aria-hidden="true" /> Tidying with AI...</p>
                 ) : tidied ? (
                   <>
                     <textarea
+                      ref={tidiedCaret.ref}
+                      onFocus={tidiedCaret.onFocus}
                       className="voice-textarea"
                       value={tidied}
                       onChange={(e) => setTidied(e.target.value)}
@@ -283,6 +418,16 @@ export default function VoiceCaptureModal({
                       />
                       <button type="submit" disabled={!refine.trim()}>Refine</button>
                     </form>
+                    {/* Dictating more into "What you said" leaves this stale,
+                        so offer a clean re-run from the raw words. */}
+                    <button
+                      type="button"
+                      className="ai-button"
+                      onClick={() => runTidy(raw)}
+                      disabled={!raw.trim()}
+                    >
+                      ↻ Re-tidy from what you said
+                    </button>
                   </>
                 ) : (
                   <>
@@ -400,10 +545,15 @@ export default function VoiceCaptureModal({
           )}
         </div>
 
-        {listening ? (
+        {capturing ? (
           <footer className="voice-actions">
-            <button type="button" className="voice-stop" onClick={stop}>
-              ◼ Stop
+            {paused && (
+              <button type="button" className="voice-record" onClick={resumeCapture}>
+                ● Resume
+              </button>
+            )}
+            <button type="button" className="voice-stop" onClick={endCapture}>
+              ◼ {paused ? 'Done' : 'Stop'}
             </button>
             <button type="button" className="link-button" onClick={onClose}>
               Cancel
@@ -473,7 +623,7 @@ export default function VoiceCaptureModal({
             <div className="voice-actions-secondary">
               {supported && (
                 <button type="button" className="voice-record" onClick={recordAgain}>
-                  ● {raw ? 'Record again' : 'Record'}
+                  ● {raw ? 'Start again' : 'Record'}
                 </button>
               )}
               <button type="button" className="link-button" onClick={onClose}>

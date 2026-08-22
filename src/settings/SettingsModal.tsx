@@ -1,5 +1,6 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { useSettings } from './SettingsContext'
+import { useOverlayDismiss } from '../lib/useOverlayDismiss'
 
 // Where account-level preferences are configured. Today it's just the forward
 // email address (for the ✉ buttons); the AI-thoughts prompt could move here
@@ -10,6 +11,7 @@ export default function SettingsModal({ onClose }: { onClose: () => void }) {
   const [error, setError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
+  const dismiss = useOverlayDismiss(onClose)
 
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
@@ -41,7 +43,7 @@ export default function SettingsModal({ onClose }: { onClose: () => void }) {
   }
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
+    <div className="modal-overlay" {...dismiss}>
       <div
         className="modal-card settings-modal"
         role="dialog"

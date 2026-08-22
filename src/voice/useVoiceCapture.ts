@@ -32,6 +32,7 @@ interface SpeechRecognitionLike {
   start(): void
   stop(): void
   abort(): void
+  onstart: (() => void) | null
   onresult: ((e: SpeechResultEvent) => void) | null
   onerror: ((e: SpeechErrorEvent) => void) | null
   onend: (() => void) | null
@@ -47,12 +48,33 @@ declare global {
 }
 // ------------------------------------------------------------------------
 
+// Chrome ends a recognition session constantly - after a few seconds of
+// silence, and again on its own internal session cap - so staying "on" through
+// a whole idea means relaunching a fresh session each time it ends. start()
+// throws InvalidStateError if the previous instance is still winding down, so
+// the relaunch backs off and retries instead of giving up (which is what used
+// to cut the mic mid-idea).
+const MAX_RESTART_ATTEMPTS = 8 // consecutive *failed* relaunches before we stop
+const RESTART_BASE_DELAY_MS = 120
+const RESTART_MAX_DELAY_MS = 1500
+// Transient network blips also end a session; retry a couple of times before
+// treating "network" as the browser-doesn't-really-support-this signal.
+const MAX_NETWORK_RETRIES = 3
+// Sessions that heard nothing at all, back to back, before we assume the user
+// has finished. Chrome gives up after roughly 7-8s of silence, so this is
+// about a minute and a half of quiet - a long thinking pause survives it.
+const MAX_SILENT_SESSIONS = 12
+
 export type UseVoiceCapture = {
   supported: boolean
   listening: boolean
   transcript: string // finalized text accumulated this session
   interim: string // live words not yet finalized
   error: string | null
+  // True when the mic stopped without the user asking it to (a long silence,
+  // or a relaunch we could not recover). The captured text is intact - the UI
+  // uses this to offer "resume" rather than silently ending the capture.
+  droppedOut: boolean
   start: () => void
   stop: () => void
   reset: () => void
@@ -103,6 +125,7 @@ export function useVoiceCapture(lang = 'en-GB'): UseVoiceCapture {
   const [transcript, setTranscript] = useState('')
   const [interim, setInterim] = useState('')
   const [error, setError] = useState<string | null>(null)
+  const [droppedOut, setDroppedOut] = useState(false)
 
   const recRef = useRef<SpeechRecognitionLike | null>(null)
   // Mirrors `listening` for use inside event handlers, which close over a
@@ -116,8 +139,28 @@ export function useVoiceCapture(lang = 'en-GB'): UseVoiceCapture {
   const committedRef = useRef('') // finalized text from previous sessions
   const sessionFinalRef = useRef('') // this session's final text, rebuilt per event
 
+  // Relaunch bookkeeping. `restartAttempts` counts *consecutive failures* and
+  // is cleared the moment a session actually starts, so an ordinary silence
+  // loop never exhausts it. `silentSessions` counts sessions that produced no
+  // words at all and is cleared by any result.
+  const restartTimerRef = useRef<number | null>(null)
+  const restartAttemptsRef = useRef(0)
+  const networkRetriesRef = useRef(0)
+  const silentSessionsRef = useRef(0)
+  const heardThisSessionRef = useRef(false)
+  // Set on the next launch by the handlers themselves; a ref because the
+  // handlers are wired to one instance but must relaunch the *next* one.
+  const launchRef = useRef<() => void>(() => {})
+
   const composeFinal = useCallback(() => {
     return joinText(committedRef.current, sessionFinalRef.current)
+  }, [])
+
+  const clearRestartTimer = useCallback(() => {
+    if (restartTimerRef.current !== null) {
+      window.clearTimeout(restartTimerRef.current)
+      restartTimerRef.current = null
+    }
   }, [])
 
   const reset = useCallback(() => {
@@ -126,30 +169,71 @@ export function useVoiceCapture(lang = 'en-GB'): UseVoiceCapture {
     setTranscript('')
     setInterim('')
     setError(null)
+    setDroppedOut(false)
   }, [])
 
   const stop = useCallback(() => {
     wantListeningRef.current = false
+    clearRestartTimer()
     try {
       recRef.current?.stop()
     } catch {
       // stop() throws if recognition isn't running - safe to ignore.
     }
     setListening(false)
-  }, [])
+  }, [clearRestartTimer])
 
-  const start = useCallback(() => {
+  // Give up on staying live, but keep everything captured so far and flag it
+  // so the UI can offer a one-tap resume.
+  const dropOut = useCallback(() => {
+    wantListeningRef.current = false
+    clearRestartTimer()
+    setTranscript(committedRef.current)
+    setInterim('')
+    setListening(false)
+    setDroppedOut(true)
+  }, [clearRestartTimer])
+
+  const scheduleRestart = useCallback(() => {
+    if (!wantListeningRef.current) return
+    if (restartAttemptsRef.current >= MAX_RESTART_ATTEMPTS) {
+      dropOut()
+      return
+    }
+    const delay = Math.min(
+      RESTART_BASE_DELAY_MS * 2 ** restartAttemptsRef.current,
+      RESTART_MAX_DELAY_MS,
+    )
+    restartAttemptsRef.current += 1
+    clearRestartTimer()
+    restartTimerRef.current = window.setTimeout(() => {
+      restartTimerRef.current = null
+      launchRef.current()
+    }, delay)
+  }, [clearRestartTimer, dropOut])
+
+  // Build a recognition instance, wire it up and start it. Called for the
+  // first session and for every automatic relaunch after that.
+  const launch = useCallback(() => {
     const Ctor = getCtor()
     if (!Ctor) {
       setError('Voice capture is not supported in this browser.')
+      setListening(false)
       return
     }
-    if (wantListeningRef.current) return
 
     const rec = new Ctor()
     rec.lang = lang
     rec.continuous = true
     rec.interimResults = true
+
+    rec.onstart = () => {
+      // The engine is genuinely live again, so the failure streak is over.
+      restartAttemptsRef.current = 0
+      heardThisSessionRef.current = false
+      setDroppedOut(false)
+      setListening(true)
+    }
 
     rec.onresult = (event) => {
       // Rebuild from the full results list every event rather than appending
@@ -170,6 +254,11 @@ export function useVoiceCapture(lang = 'en-GB'): UseVoiceCapture {
           interimChunk += text
         }
       }
+      // Words are flowing: this session is productive and the connection is
+      // healthy, so clear both give-up counters.
+      heardThisSessionRef.current = true
+      silentSessionsRef.current = 0
+      networkRetriesRef.current = 0
       sessionFinalRef.current = collapseGrowth(finals).join(' ')
       setTranscript(composeFinal())
       setInterim(interimChunk.replace(/\s+/g, ' ').trim())
@@ -177,12 +266,19 @@ export function useVoiceCapture(lang = 'en-GB'): UseVoiceCapture {
 
     rec.onerror = (event) => {
       if (event.error === 'no-speech' || event.error === 'aborted') {
-        // Benign - onend will restart if we're still meant to be listening.
+        // Benign - onend will relaunch if we're still meant to be listening.
+        return
+      }
+      if (event.error === 'network' && networkRetriesRef.current < MAX_NETWORK_RETRIES) {
+        // Chrome's recognition is cloud-backed, so a momentary blip ends the
+        // session. Let onend relaunch rather than killing the whole capture.
+        networkRetriesRef.current += 1
         return
       }
       // Everything else is fatal for this session: stop and let the modal
       // fall back to the editable text box so the user can type.
       wantListeningRef.current = false
+      clearRestartTimer()
       if (event.error === 'not-allowed' || event.error === 'service-not-allowed') {
         setError('Microphone access was blocked. Allow it in your browser to use voice.')
       } else if (event.error === 'network') {
@@ -195,6 +291,7 @@ export function useVoiceCapture(lang = 'en-GB'): UseVoiceCapture {
         setError(`Voice capture error: ${event.error}.`)
       }
       setListening(false)
+      setDroppedOut(true)
     }
 
     rec.onend = () => {
@@ -203,39 +300,70 @@ export function useVoiceCapture(lang = 'en-GB'): UseVoiceCapture {
       committedRef.current = composeFinal()
       sessionFinalRef.current = ''
 
-      // Chrome ends recognition after a pause; restart while the user still
-      // wants to capture, so a thinking pause doesn't cut the session short.
-      if (wantListeningRef.current) {
-        try {
-          rec.start()
-        } catch {
-          wantListeningRef.current = false
-          setListening(false)
-        }
-      } else {
+      if (!wantListeningRef.current) {
         setTranscript(committedRef.current)
         setInterim('')
         setListening(false)
+        return
       }
+
+      // A session that heard nothing is a silence timeout. Keep relaunching
+      // through an ordinary thinking pause, but stop eventually rather than
+      // holding the mic (and the wake lock) open all day.
+      if (heardThisSessionRef.current) {
+        silentSessionsRef.current = 0
+      } else if (++silentSessionsRef.current >= MAX_SILENT_SESSIONS) {
+        dropOut()
+        return
+      }
+
+      setInterim('')
+      scheduleRestart()
     }
 
     recRef.current = rec
-    wantListeningRef.current = true
-    setError(null)
-    setInterim('')
-    setListening(true)
     try {
       rec.start()
     } catch {
-      // Calling start() too soon after a previous run can throw; onend's
-      // restart path will recover, so just ignore here.
+      // start() throws if the previous instance is still winding down. Backing
+      // off and retrying is the fix for the mic dying part-way through an
+      // idea; the old code gave up here on the first throw.
+      scheduleRestart()
     }
-  }, [lang, composeFinal])
+  }, [lang, composeFinal, clearRestartTimer, dropOut, scheduleRestart])
+
+  // Handlers relaunch through this ref so they always reach the current
+  // `launch` closure, not the one captured when their instance was built.
+  useEffect(() => {
+    launchRef.current = launch
+  }, [launch])
+
+  // Begin (or resume) capturing. Text already committed is kept, so calling
+  // start() after a drop-out continues the same note rather than replacing it.
+  const start = useCallback(() => {
+    if (!getCtor()) {
+      setError('Voice capture is not supported in this browser.')
+      return
+    }
+    if (wantListeningRef.current) return
+
+    clearRestartTimer()
+    restartAttemptsRef.current = 0
+    networkRetriesRef.current = 0
+    silentSessionsRef.current = 0
+    wantListeningRef.current = true
+    setError(null)
+    setInterim('')
+    setDroppedOut(false)
+    setListening(true)
+    launch()
+  }, [clearRestartTimer, launch])
 
   // Abort cleanly if the component unmounts mid-capture.
   useEffect(() => {
     return () => {
       wantListeningRef.current = false
+      if (restartTimerRef.current !== null) window.clearTimeout(restartTimerRef.current)
       try {
         recRef.current?.abort()
       } catch {
@@ -244,5 +372,5 @@ export function useVoiceCapture(lang = 'en-GB'): UseVoiceCapture {
     }
   }, [])
 
-  return { supported, listening, transcript, interim, error, start, stop, reset }
+  return { supported, listening, transcript, interim, error, droppedOut, start, stop, reset }
 }

@@ -1,4 +1,4 @@
-export const VERSION = 'v0.33'
+export const VERSION = 'v0.34'
 
 export type ChangelogEntry = {
   version: string
@@ -9,6 +9,19 @@ export type ChangelogEntry = {
 // Newest first. Bump VERSION and add an entry here on every commit so
 // the deployed build always shows exactly what shipped.
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: 'v0.34',
+    date: '2026-08-22',
+    notes: [
+      'Much better AI tidy-up. It now runs on a far stronger model (Sonnet 5) with a rewritten brief, and it finally does the thing dictation actually needs: it strips the "like", "sort of", "kind of", "you know", "basically" padding that carries no meaning, drops repetition, and works out which of two competing versions of a thought you meant. Where you contradict yourself, it keeps the later version as the correction. Where a sentence trails off and you start it again, it cuts the abandoned half rather than stitching both together - but a genuinely new unfinished thought is kept, not deleted.',
+      'The microphone no longer dies part-way through an idea. It used to give up the moment the browser refused a restart, which happens constantly; it now backs off and retries, rides out network blips, and keeps going through long thinking pauses.',
+      'If the mic does stop, the capture stays open with a Resume button and everything you said intact - instead of jumping you into review and tidying a half-finished note.',
+      'Dictate into the middle of a note: the 🎤 buttons now drop your words in at the cursor rather than always on the end. That works in the voice capture (on both "What you said" and "Tidied") and on every board inside an idea. Boxes you have not clicked into still get the text on the end, as before.',
+      'A "Re-tidy from what you said" button, for when you have added more by voice after the first tidy-up.',
+      'Selecting text in a panel no longer closes it. Dragging to select and releasing the mouse outside the panel used to shut it and lose the edit; panels now close only when the click both starts and ends on the background.',
+      'The sidebar stays put when you scroll a page. The page area and the sidebar now scroll independently instead of the whole app sliding up together.',
+    ],
+  },
   {
     version: 'v0.33',
     date: '2026-07-05',
